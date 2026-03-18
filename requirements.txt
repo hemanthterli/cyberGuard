@@ -1,0 +1,28 @@
+# --- OCR / Image Processing ---
+rapidocr-onnxruntime
+opencv-python
+pillow
+numpy
+
+# --- Speech to Text / Audio Processing ---
+faster-whisper
+
+
+# --- YouTube Processing ---
+yt-dlp
+youtube-transcript-api
+webvtt-py
+
+# --- API Server ---
+fastapi
+uvicorn[standard]
+python-multipart
+
+# --- Environment / Config ---
+python-dotenv
+
+# --- Vector Search / AI Retrieval ---
+faiss-cpu
+
+# --- Data Processing ---
+pandas
