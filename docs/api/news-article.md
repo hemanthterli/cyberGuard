@@ -1,23 +1,16 @@
 # /news-article
 
-Purpose: Fetch and normalize news article content from text, URL, or base64-encoded file input.
-If `API_KEY` is set in the environment, include `X-API-Key` in request headers.
+Purpose: Fetch and normalize article content from a URL.
 
-Request schema:
+Request (JSON):
 
 ```json
 {
-  "text": "optional article text",
-  "url": "https://example.com/news/article",
-  "file_base64": "BASE64_ENCODED_TEXT",
-  "filename": "article.txt",
-  "mime_type": "text/plain"
+  "url": "https://example.com/news/article"
 }
 ```
 
-Only one of `text`, `url`, or `file_base64` is allowed.
-
-Response schema:
+Response:
 
 ```json
 {
@@ -40,8 +33,7 @@ Response schema:
 
 Error cases:
 
-- `400 Bad Request` invalid input
-- `401 Unauthorized` missing/invalid API key
+- `400 Bad Request` invalid URL
 - `404 Not Found` article not found
 - `502 Bad Gateway` fetch failure
 

@@ -3,33 +3,18 @@ import logging
 import requests
 
 from app.core.config import settings
-from app.schemas.requests import SourceInput
 from app.services.errors import ServiceError
 from app.services.types import ProcessedResult
-from app.utils.base64_utils import decode_base64
-from app.utils.http import fetch_url_bytes
 
 logger = logging.getLogger(__name__)
 
 OCR_SPACE_URL = "https://api.ocr.space/parse/image"
 
 
-def process_image(payload: SourceInput) -> ProcessedResult:
-    if payload.text is not None:
-        text = payload.text.strip()
-        if not text:
-            raise ServiceError("Empty text payload", code="invalid_input", status_code=400)
-        return ProcessedResult(text=text, input_type="text", source_url=None, size_bytes=len(text))
-
-    if payload.url is not None:
-        image_bytes, content_type = fetch_url_bytes(str(payload.url))
-        return _ocr_bytes(image_bytes, content_type, input_type="url", source_url=str(payload.url))
-
-    if payload.file_base64 is not None:
-        image_bytes = decode_base64(payload.file_base64, settings.max_download_bytes)
-        return _ocr_bytes(image_bytes, payload.mime_type, input_type="file", source_url=None)
-
-    raise ServiceError("No input provided", code="invalid_input", status_code=400)
+def process_image_bytes(image_bytes: bytes, content_type: str | None) -> ProcessedResult:
+    if not image_bytes:
+        raise ServiceError("Empty image payload", code="invalid_input", status_code=400)
+    return _ocr_bytes(image_bytes, content_type, input_type="file", source_url=None)
 
 
 def _ocr_bytes(

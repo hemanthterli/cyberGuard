@@ -1,23 +1,16 @@
 # /text
 
-Purpose: Normalize text input from text, URL, or base64-encoded file input.
-If `API_KEY` is set in the environment, include `X-API-Key` in request headers.
+Purpose: Normalize plain text input.
 
-Request schema:
+Request (JSON):
 
 ```json
 {
-  "text": "Sample text input",
-  "url": "https://example.com/notes",
-  "file_base64": "BASE64_ENCODED_TEXT",
-  "filename": "notes.txt",
-  "mime_type": "text/plain"
+  "text": "Sample text input"
 }
 ```
 
-Only one of `text`, `url`, or `file_base64` is allowed.
-
-Response schema:
+Response:
 
 ```json
 {
@@ -40,10 +33,8 @@ Response schema:
 
 Error cases:
 
-- `400 Bad Request` invalid input
-- `401 Unauthorized` missing/invalid API key
-- `422 Validation Error` empty payload
-- `502 Bad Gateway` fetch failure
+- `400 Bad Request` empty text
+- `422 Validation Error` invalid payload
 
 Example request:
 

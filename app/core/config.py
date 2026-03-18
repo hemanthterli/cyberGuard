@@ -8,7 +8,6 @@ load_dotenv()
 @dataclass(frozen=True)
 class Settings:
     app_name: str = os.getenv("APP_NAME", "cyberGuard")
-    api_key: str | None = os.getenv("API_KEY")
     ocr_space_api_key: str | None = os.getenv("OCR_SPACE_API_KEY")
     whisper_model: str = os.getenv("WHISPER_MODEL", "base")
     whisper_device: str = os.getenv("WHISPER_DEVICE", "cpu")

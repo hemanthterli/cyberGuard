@@ -1,15 +1,15 @@
 import time
-from typing import Any
+from typing import Any, Callable
 from uuid import uuid4
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Request
+from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 
-from app.schemas.requests import SourceInput
+from app.core.config import settings
+from app.schemas.requests import TextInput, UrlInput
 from app.schemas.responses import ProcessedTextData, ResponseMeta, StandardResponse
 from app.services import audio_service, image_service, news_service, text_service, youtube_service
 from app.services.errors import ServiceError
 from app.services.types import ProcessedResult
-from app.utils.auth import require_api_key
 
 router = APIRouter()
 
@@ -26,34 +26,34 @@ ERROR_EXAMPLE = {
         "size_bytes": None,
         "source_url": None,
     },
-    "error": {"code": "validation_error", "detail": "Provide exactly one input"},
+    "error": {"code": "validation_error", "detail": "Provide valid input"},
 }
 
 ERROR_RESPONSES: dict[int, dict[str, Any]] = {
-    400: {"description": "Bad Request", "model": StandardResponse, "content": {"application/json": {"example": ERROR_EXAMPLE}}},
-    401: {"description": "Unauthorized", "model": StandardResponse, "content": {"application/json": {"example": ERROR_EXAMPLE}}},
-    403: {"description": "Forbidden", "model": StandardResponse, "content": {"application/json": {"example": ERROR_EXAMPLE}}},
-    404: {"description": "Not Found", "model": StandardResponse, "content": {"application/json": {"example": ERROR_EXAMPLE}}},
-    422: {"description": "Validation Error", "model": StandardResponse, "content": {"application/json": {"example": ERROR_EXAMPLE}}},
-    500: {"description": "Internal Server Error", "model": StandardResponse, "content": {"application/json": {"example": ERROR_EXAMPLE}}},
-}
-
-REQUEST_EXAMPLES: dict[str, Any] = {
-    "text": {
-        "summary": "Text input",
-        "value": {"text": "Sample input text"},
+    400: {
+        "description": "Bad Request",
+        "model": StandardResponse,
+        "content": {"application/json": {"example": ERROR_EXAMPLE}},
     },
-    "url": {
-        "summary": "URL input",
-        "value": {"url": "https://example.com/resource"},
+    404: {
+        "description": "Not Found",
+        "model": StandardResponse,
+        "content": {"application/json": {"example": ERROR_EXAMPLE}},
     },
-    "file_base64": {
-        "summary": "Base64 file input",
-        "value": {
-            "file_base64": "BASE64_ENCODED_CONTENT",
-            "filename": "input.txt",
-            "mime_type": "text/plain",
-        },
+    413: {
+        "description": "Payload Too Large",
+        "model": StandardResponse,
+        "content": {"application/json": {"example": ERROR_EXAMPLE}},
+    },
+    422: {
+        "description": "Validation Error",
+        "model": StandardResponse,
+        "content": {"application/json": {"example": ERROR_EXAMPLE}},
+    },
+    500: {
+        "description": "Internal Server Error",
+        "model": StandardResponse,
+        "content": {"application/json": {"example": ERROR_EXAMPLE}},
     },
 }
 
@@ -82,15 +82,42 @@ def _build_response(
     )
 
 
-def _service_call(func, payload: SourceInput, source: str, request: Request) -> StandardResponse:
+def _service_call(
+    func: Callable[..., ProcessedResult],
+    source: str,
+    request: Request,
+    *args,
+    **kwargs,
+) -> StandardResponse:
     start = time.perf_counter()
     try:
-        result = func(payload)
+        result = func(*args, **kwargs)
     except ServiceError as exc:
         raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "detail": exc.message})
     duration_ms = int((time.perf_counter() - start) * 1000)
     request_id = getattr(request.state, "request_id", str(uuid4()))
     return _build_response(result, request_id, source, duration_ms)
+
+
+async def _read_upload(
+    file: UploadFile,
+    *,
+    allowed_types: set[str] | None = None,
+    allowed_prefix: str | None = None,
+) -> bytes:
+    if not file:
+        raise ServiceError("File is required", code="invalid_input", status_code=400)
+    content_type = file.content_type or ""
+    if allowed_prefix and not content_type.startswith(allowed_prefix):
+        raise ServiceError("Unsupported file type", code="invalid_input", status_code=400)
+    if allowed_types and content_type not in allowed_types:
+        raise ServiceError("Unsupported file type", code="invalid_input", status_code=400)
+    data = await file.read()
+    if not data:
+        raise ServiceError("Empty file payload", code="invalid_input", status_code=400)
+    if len(data) > settings.max_download_bytes:
+        raise ServiceError("File payload too large", code="payload_too_large", status_code=413)
+    return data
 
 
 @router.post(
@@ -99,12 +126,9 @@ def _service_call(func, payload: SourceInput, source: str, request: Request) -> 
     responses=ERROR_RESPONSES,
     summary="Process audio input",
 )
-async def audio_endpoint(
-    request: Request,
-    payload: SourceInput = Body(..., examples=REQUEST_EXAMPLES),
-    _: None = Depends(require_api_key),
-) -> StandardResponse:
-    return _service_call(audio_service.process_audio, payload, "audio", request)
+async def audio_endpoint(request: Request, file: UploadFile = File(...)) -> StandardResponse:
+    audio_bytes = await _read_upload(file, allowed_prefix="audio/")
+    return _service_call(audio_service.process_audio_bytes, "audio", request, audio_bytes)
 
 
 @router.post(
@@ -113,13 +137,15 @@ async def audio_endpoint(
     responses=ERROR_RESPONSES,
     summary="Process image input",
 )
-async def image_endpoint(
-        request: Request,
-    payload: SourceInput = Body(..., examples=REQUEST_EXAMPLES),
-
-    _: None = Depends(require_api_key),
-) -> StandardResponse:
-    return _service_call(image_service.process_image, payload, "image", request)
+async def image_endpoint(request: Request, file: UploadFile = File(...)) -> StandardResponse:
+    image_bytes = await _read_upload(file, allowed_types={"image/jpeg", "image/png"})
+    return _service_call(
+        image_service.process_image_bytes,
+        "image",
+        request,
+        image_bytes,
+        file.content_type,
+    )
 
 
 @router.post(
@@ -128,13 +154,8 @@ async def image_endpoint(
     responses=ERROR_RESPONSES,
     summary="Process YouTube input",
 )
-async def youtube_endpoint(
-        request: Request,
-    payload: SourceInput = Body(..., examples=REQUEST_EXAMPLES),
-
-    _: None = Depends(require_api_key),
-) -> StandardResponse:
-    return _service_call(youtube_service.process_youtube, payload, "youtube", request)
+async def youtube_endpoint(payload: UrlInput, request: Request) -> StandardResponse:
+    return _service_call(youtube_service.process_youtube_url, "youtube", request, str(payload.url))
 
 
 @router.post(
@@ -143,13 +164,8 @@ async def youtube_endpoint(
     responses=ERROR_RESPONSES,
     summary="Process news article input",
 )
-async def news_article_endpoint(
-        request: Request,
-    payload: SourceInput = Body(..., examples=REQUEST_EXAMPLES),
-
-    _: None = Depends(require_api_key),
-) -> StandardResponse:
-    return _service_call(news_service.process_news_article, payload, "news-article", request)
+async def news_article_endpoint(payload: UrlInput, request: Request) -> StandardResponse:
+    return _service_call(news_service.process_news_url, "news-article", request, str(payload.url))
 
 
 @router.post(
@@ -158,10 +174,5 @@ async def news_article_endpoint(
     responses=ERROR_RESPONSES,
     summary="Process text input",
 )
-async def text_endpoint(
-        request: Request,
-    payload: SourceInput = Body(..., examples=REQUEST_EXAMPLES),
-
-    _: None = Depends(require_api_key),
-) -> StandardResponse:
-    return _service_call(text_service.process_text, payload, "text", request)
+async def text_endpoint(payload: TextInput, request: Request) -> StandardResponse:
+    return _service_call(text_service.process_text_content, "text", request, payload.text)

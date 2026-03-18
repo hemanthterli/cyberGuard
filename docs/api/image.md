@@ -1,23 +1,12 @@
 # /image
 
-Purpose: Extract text from images via OCR from text, URL, or base64-encoded file input.
-If `API_KEY` is set in the environment, include `X-API-Key` in request headers.
+Purpose: Extract text from an uploaded JPG/PNG image using OCR.
 
-Request schema:
+Request (multipart/form-data):
 
-```json
-{
-  "text": "optional text input",
-  "url": "https://example.com/image.png",
-  "file_base64": "BASE64_ENCODED_IMAGE",
-  "filename": "image.png",
-  "mime_type": "image/png"
-}
-```
+- `file` (required): JPG or PNG image
 
-Only one of `text`, `url`, or `file_base64` is allowed.
-
-Response schema:
+Response:
 
 ```json
 {
@@ -29,10 +18,10 @@ Response schema:
   "meta": {
     "request_id": "uuid",
     "source": "image",
-    "input_type": "url",
+    "input_type": "file",
     "duration_ms": 123,
     "size_bytes": 12345,
-    "source_url": "https://example.com/image.png"
+    "source_url": null
   },
   "error": null
 }
@@ -40,8 +29,8 @@ Response schema:
 
 Error cases:
 
-- `400 Bad Request` invalid input
-- `401 Unauthorized` missing/invalid API key
+- `400 Bad Request` unsupported file type or empty file
+- `413 Payload Too Large` file exceeds size limit
 - `422 Validation Error` OCR failed or empty result
 - `500 Internal Server Error` OCR service error
 
@@ -49,6 +38,5 @@ Example request:
 
 ```bash
 curl -X POST http://localhost:8000/image \
-  -H "Content-Type: application/json" \
-  -d '{"url":"https://example.com/image.png"}'
+  -F "file=@/path/to/image.png"
 ```

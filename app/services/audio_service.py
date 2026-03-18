@@ -5,11 +5,8 @@ import tempfile
 from faster_whisper import WhisperModel
 
 from app.core.config import settings
-from app.schemas.requests import SourceInput
 from app.services.errors import ServiceError
 from app.services.types import ProcessedResult
-from app.utils.base64_utils import decode_base64
-from app.utils.http import fetch_url_bytes
 
 logger = logging.getLogger(__name__)
 
@@ -28,22 +25,10 @@ def _get_model() -> WhisperModel:
     return _model
 
 
-def process_audio(payload: SourceInput) -> ProcessedResult:
-    if payload.text is not None:
-        text = payload.text.strip()
-        if not text:
-            raise ServiceError("Empty text payload", code="invalid_input", status_code=400)
-        return ProcessedResult(text=text, input_type="text", source_url=None, size_bytes=len(text))
-
-    if payload.url is not None:
-        audio_bytes, _content_type = fetch_url_bytes(str(payload.url))
-        return _transcribe_bytes(audio_bytes, input_type="url", source_url=str(payload.url))
-
-    if payload.file_base64 is not None:
-        audio_bytes = decode_base64(payload.file_base64, settings.max_download_bytes)
-        return _transcribe_bytes(audio_bytes, input_type="file", source_url=None)
-
-    raise ServiceError("No input provided", code="invalid_input", status_code=400)
+def process_audio_bytes(audio_bytes: bytes) -> ProcessedResult:
+    if not audio_bytes:
+        raise ServiceError("Empty audio payload", code="invalid_input", status_code=400)
+    return _transcribe_bytes(audio_bytes, input_type="file", source_url=None)
 
 
 def _transcribe_bytes(audio_bytes: bytes, input_type: str, source_url: str | None) -> ProcessedResult:

@@ -1,23 +1,12 @@
 # /audio
 
-Purpose: Transcribe audio content from text, URL, or base64-encoded file input.
-If `API_KEY` is set in the environment, include `X-API-Key` in request headers.
+Purpose: Transcribe audio from an uploaded file.
 
-Request schema:
+Request (multipart/form-data):
 
-```json
-{
-  "text": "optional text input",
-  "url": "https://example.com/audio.mp3",
-  "file_base64": "BASE64_ENCODED_AUDIO",
-  "filename": "audio.mp3",
-  "mime_type": "audio/mpeg"
-}
-```
+- `file` (required): audio file
 
-Only one of `text`, `url`, or `file_base64` is allowed.
-
-Response schema:
+Response:
 
 ```json
 {
@@ -40,15 +29,14 @@ Response schema:
 
 Error cases:
 
-- `400 Bad Request` invalid input
-- `401 Unauthorized` missing/invalid API key
-- `422 Validation Error` unsupported payload or empty result
+- `400 Bad Request` unsupported file type or empty file
+- `413 Payload Too Large` file exceeds size limit
+- `422 Validation Error` empty transcription
 - `500 Internal Server Error` transcription failure
 
 Example request:
 
 ```bash
 curl -X POST http://localhost:8000/audio \
-  -H "Content-Type: application/json" \
-  -d '{"url":"https://example.com/audio.mp3"}'
+  -F "file=@/path/to/audio.mp3"
 ```
