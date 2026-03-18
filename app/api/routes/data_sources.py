@@ -100,8 +100,8 @@ def _service_call(func, payload: SourceInput, source: str, request: Request) -> 
     summary="Process audio input",
 )
 async def audio_endpoint(
-    payload: SourceInput = Body(..., examples=REQUEST_EXAMPLES),
     request: Request,
+    payload: SourceInput = Body(..., examples=REQUEST_EXAMPLES),
     _: None = Depends(require_api_key),
 ) -> StandardResponse:
     return _service_call(audio_service.process_audio, payload, "audio", request)
@@ -114,8 +114,9 @@ async def audio_endpoint(
     summary="Process image input",
 )
 async def image_endpoint(
+        request: Request,
     payload: SourceInput = Body(..., examples=REQUEST_EXAMPLES),
-    request: Request,
+
     _: None = Depends(require_api_key),
 ) -> StandardResponse:
     return _service_call(image_service.process_image, payload, "image", request)
@@ -128,8 +129,9 @@ async def image_endpoint(
     summary="Process YouTube input",
 )
 async def youtube_endpoint(
+        request: Request,
     payload: SourceInput = Body(..., examples=REQUEST_EXAMPLES),
-    request: Request,
+
     _: None = Depends(require_api_key),
 ) -> StandardResponse:
     return _service_call(youtube_service.process_youtube, payload, "youtube", request)
@@ -142,8 +144,9 @@ async def youtube_endpoint(
     summary="Process news article input",
 )
 async def news_article_endpoint(
+        request: Request,
     payload: SourceInput = Body(..., examples=REQUEST_EXAMPLES),
-    request: Request,
+
     _: None = Depends(require_api_key),
 ) -> StandardResponse:
     return _service_call(news_service.process_news_article, payload, "news-article", request)
@@ -156,8 +159,9 @@ async def news_article_endpoint(
     summary="Process text input",
 )
 async def text_endpoint(
+        request: Request,
     payload: SourceInput = Body(..., examples=REQUEST_EXAMPLES),
-    request: Request,
+
     _: None = Depends(require_api_key),
 ) -> StandardResponse:
     return _service_call(text_service.process_text, payload, "text", request)
