@@ -21,6 +21,9 @@ python-multipart
 # --- Environment / Config ---
 python-dotenv
 
+# --- HTTP ---
+requests
+
 # --- Vector Search / AI Retrieval ---
 faiss-cpu
 
