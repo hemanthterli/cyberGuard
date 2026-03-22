@@ -31,3 +31,11 @@ class CyberLawsInput(BaseModel):
     content: str = Field(..., min_length=1)
     core_decision: dict = Field(..., description="Core decision output JSON")
     retrieved_laws: list[str] = Field(default_factory=list)
+
+
+class ComplaintDraftInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    summary: str = Field(..., min_length=1)
+    detected_phrases: list[str] = Field(default_factory=list)
+    applicable_laws: list[dict] = Field(default_factory=list)
+    recommended_actions: list[str] = Field(default_factory=list)

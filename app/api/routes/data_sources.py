@@ -4,10 +4,12 @@ from typing import Any, Callable
 from uuid import uuid4
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+from fastapi.responses import PlainTextResponse
 
 from app.core.config import settings
 from app.schemas.requests import (
     ContentEnhancementInput,
+    ComplaintDraftInput,
     CoreDecisionInput,
     CyberLawsInput,
     TextInput,
@@ -23,6 +25,7 @@ from app.schemas.responses import (
     StandardResponse,
 )
 from app.services import audio_service, image_service, news_service, text_service, youtube_service
+from app.services import complaint_draft_service
 from app.services import content_enhancement_service, core_decision_service
 from app.services import cyber_law_service
 from app.services.errors import ServiceError
@@ -220,6 +223,29 @@ def _cyber_laws_call(
     return _build_cyber_laws_response(result, request_id, source, duration_ms)
 
 
+def _plain_text_call(
+    func: Callable[..., str],
+    source: str,
+    request: Request,
+    *args,
+    **kwargs,
+) -> PlainTextResponse:
+    start = time.perf_counter()
+    try:
+        logger.info("Request start", extra={"source": source})
+        result = func(*args, **kwargs)
+    except ServiceError as exc:
+        logger.warning(
+            "Service error",
+            extra={"source": source, "code": exc.code, "status_code": exc.status_code},
+        )
+        raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "detail": exc.message})
+    duration_ms = int((time.perf_counter() - start) * 1000)
+    request_id = getattr(request.state, "request_id", str(uuid4()))
+    logger.info("Request complete", extra={"source": source, "duration_ms": duration_ms, "request_id": request_id})
+    return PlainTextResponse(content=result)
+
+
 async def _read_upload(
     file: UploadFile,
     *,
@@ -341,6 +367,25 @@ async def content_enhancement_endpoint(
     return _service_call(
         content_enhancement_service.enhance_content,
         "content-enhancement",
+        request,
+        payload,
+    )
+
+
+@router.post(
+    "/generate-complaint",
+    response_class=PlainTextResponse,
+    responses=ERROR_RESPONSES,
+    summary="Draft a cyber crime complaint letter",
+    tags=["Cyber Law"],
+)
+async def generate_complaint_endpoint(
+    payload: ComplaintDraftInput,
+    request: Request,
+) -> PlainTextResponse:
+    return _plain_text_call(
+        complaint_draft_service.generate_complaint_letter,
+        "generate-complaint",
         request,
         payload,
     )
