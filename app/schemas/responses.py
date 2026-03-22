@@ -33,11 +33,32 @@ class CoreDecisionData(BaseModel):
     phrases: str
     source: str
     impact_action: str
+    core_cybercrime: str
 
 
 class CoreDecisionResponse(BaseModel):
     success: bool
     message: str
     data: CoreDecisionData | None
+    meta: ResponseMeta
+    error: ErrorInfo | None = None
+
+
+class ComplaintLaw(BaseModel):
+    law: str
+    description: str
+
+
+class ComplaintOutput(BaseModel):
+    summary: str
+    detected_phrases: list[str]
+    applicable_laws: list[ComplaintLaw]
+    recommended_actions: list[str]
+
+
+class CyberLawsResponse(BaseModel):
+    success: bool
+    message: str
+    data: ComplaintOutput | None
     meta: ResponseMeta
     error: ErrorInfo | None = None

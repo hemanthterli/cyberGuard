@@ -1,6 +1,6 @@
 # /core-decision
 
-Purpose: Analyze content for bullying or negative targeting using the CORE decision model.
+Purpose: Analyze content for bullying or negative targeting and produce a structured decision with a cybercrime summary.
 
 Request (JSON):
 
@@ -24,7 +24,8 @@ Response:
     "description": "Short explanation",
     "phrases": "Exact phrases",
     "source": "https://youtube.com/test",
-    "impact_action": "Report/complaint/legal action"
+    "impact_action": "Report/complaint/legal action",
+    "core_cybercrime": "20-25 word cybercrime summary"
   },
   "meta": {
     "request_id": "uuid",

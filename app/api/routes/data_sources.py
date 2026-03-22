@@ -6,17 +6,25 @@ from uuid import uuid4
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 
 from app.core.config import settings
-from app.schemas.requests import ContentEnhancementInput, CoreDecisionInput, TextInput, UrlInput
+from app.schemas.requests import (
+    ContentEnhancementInput,
+    CoreDecisionInput,
+    CyberLawsInput,
+    TextInput,
+    UrlInput,
+)
 from app.schemas.responses import (
+    ComplaintOutput,
     CoreDecisionData,
     CoreDecisionResponse,
+    CyberLawsResponse,
     ProcessedTextData,
     ResponseMeta,
     StandardResponse,
 )
 from app.services import audio_service, image_service, news_service, text_service, youtube_service
-from app.services import content_enhancement_service
-from app.services import core_decision_service
+from app.services import content_enhancement_service, core_decision_service
+from app.services import cyber_law_service
 from app.services.errors import ServiceError
 from app.services.types import ProcessedResult
 
@@ -62,6 +70,11 @@ ERROR_RESPONSES: dict[int, dict[str, Any]] = {
     },
     500: {
         "description": "Internal Server Error",
+        "model": StandardResponse,
+        "content": {"application/json": {"example": ERROR_EXAMPLE}},
+    },
+    502: {
+        "description": "Bad Gateway",
         "model": StandardResponse,
         "content": {"application/json": {"example": ERROR_EXAMPLE}},
     },
@@ -161,6 +174,52 @@ def _decision_call(
     return _build_decision_response(result, request_id, source, duration_ms)
 
 
+def _build_cyber_laws_response(
+    result: ComplaintOutput,
+    request_id: str,
+    source: str,
+    duration_ms: int,
+) -> CyberLawsResponse:
+    meta = ResponseMeta(
+        request_id=request_id,
+        source=source,
+        input_type="json",
+        duration_ms=duration_ms,
+        size_bytes=None,
+        source_url=None,
+    )
+    return CyberLawsResponse(
+        success=True,
+        message="Cyber law analysis generated successfully",
+        data=result,
+        meta=meta,
+        error=None,
+    )
+
+
+def _cyber_laws_call(
+    func: Callable[..., ComplaintOutput],
+    source: str,
+    request: Request,
+    *args,
+    **kwargs,
+) -> CyberLawsResponse:
+    start = time.perf_counter()
+    try:
+        logger.info("Request start", extra={"source": source})
+        result = func(*args, **kwargs)
+    except ServiceError as exc:
+        logger.warning(
+            "Service error",
+            extra={"source": source, "code": exc.code, "status_code": exc.status_code},
+        )
+        raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "detail": exc.message})
+    duration_ms = int((time.perf_counter() - start) * 1000)
+    request_id = getattr(request.state, "request_id", str(uuid4()))
+    logger.info("Request complete", extra={"source": source, "duration_ms": duration_ms})
+    return _build_cyber_laws_response(result, request_id, source, duration_ms)
+
+
 async def _read_upload(
     file: UploadFile,
     *,
@@ -249,6 +308,22 @@ async def text_endpoint(payload: TextInput, request: Request) -> StandardRespons
 )
 async def core_decision_endpoint(payload: CoreDecisionInput, request: Request) -> CoreDecisionResponse:
     return _decision_call(core_decision_service.analyze_bullying, "core-decision", request, payload)
+
+
+@router.post(
+    "/get-cyber-laws",
+    response_model=CyberLawsResponse,
+    responses=ERROR_RESPONSES,
+    summary="Generate cyber law analysis and complaint guidance",
+    tags=["Cyber Law"],
+)
+async def get_cyber_laws_endpoint(payload: CyberLawsInput, request: Request) -> CyberLawsResponse:
+    return _cyber_laws_call(
+        cyber_law_service.analyze_cyber_laws,
+        "get-cyber-laws",
+        request,
+        payload,
+    )
 
 
 @router.post(

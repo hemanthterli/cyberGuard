@@ -24,3 +24,10 @@ class ContentEnhancementInput(BaseModel):
     source_type: str = Field(..., min_length=1)
     source: str | None = Field(default=None, min_length=1)
     content: str = Field(..., min_length=1)
+
+
+class CyberLawsInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    content: str = Field(..., min_length=1)
+    core_decision: dict = Field(..., description="Core decision output JSON")
+    retrieved_laws: list[str] = Field(default_factory=list)

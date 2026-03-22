@@ -29,6 +29,9 @@ google-genai
 
 # --- Vector Search / AI Retrieval ---
 faiss-cpu
+langchain-community
+langchain-core
+langchain-google-genai
 
 # --- Data Processing ---
 pandas

@@ -35,6 +35,10 @@ _DECISION_FUNCTION = {
                 "type": "string",
                 "description": "Possible action user can take like report, complaint, legal action",
             },
+            "core_cybercrime": {
+                "type": "string",
+                "description": "20-25 word summary of the detected cybercrime",
+            },
         },
         "required": [
             "bullying",
@@ -42,6 +46,7 @@ _DECISION_FUNCTION = {
             "phrases",
             "source",
             "impact_action",
+            "core_cybercrime",
         ],
     },
 }
@@ -132,7 +137,8 @@ def _build_prompt(payload: dict[str, Any]) -> str:
         "4. Extract exact phrases causing bullying\n"
         "5. Give short description\n"
         "6. Return source exactly\n"
-        "7. Suggest impact action\n\n"
+        "7. Suggest impact action\n"
+        "8. Provide core_cybercrime: 20-25 word summary of the cybercrime saying which domain that crime comes under\n\n"
         f"Input:\n\n{payload}\n"
     )
 
@@ -153,4 +159,5 @@ def _parse_output(args: dict[str, Any], fallback_source: str) -> CoreDecisionDat
         phrases=_get("phrases"),
         source=_get("source") if args.get("source") else fallback_source,
         impact_action=_get("impact_action"),
+        core_cybercrime=_get("core_cybercrime"),
     )

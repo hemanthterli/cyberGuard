@@ -11,6 +11,7 @@ def test_core_decision_success(client, monkeypatch):
             phrases="Bad phrase",
             source="https://example.com",
             impact_action="Report",
+            core_cybercrime="Short cybercrime summary",
         )
 
     monkeypatch.setattr(core_decision_service, "analyze_bullying", fake_analyze)
@@ -27,6 +28,7 @@ def test_core_decision_success(client, monkeypatch):
     body = response.json()
     assert body["success"] is True
     assert body["data"]["bullying"] == "yes"
+    assert body["data"]["core_cybercrime"] == "Short cybercrime summary"
 
 
 def test_core_decision_invalid_input(client):
