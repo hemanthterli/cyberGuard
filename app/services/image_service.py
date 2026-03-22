@@ -11,32 +11,46 @@ logger = logging.getLogger(__name__)
 OCR_SPACE_URL = "https://api.ocr.space/parse/image"
 
 
-def process_image_bytes(image_bytes: bytes, content_type: str | None) -> ProcessedResult:
+def process_image_bytes(image_bytes: bytes, content_type: str | None, filename: str | None) -> ProcessedResult:
     if not image_bytes:
         raise ServiceError("Empty image payload", code="invalid_input", status_code=400)
-    return _ocr_bytes(image_bytes, content_type, input_type="file", source_url=None)
+    safe_name = _safe_filename(filename, content_type)
+    logger.info(
+        "OCR request received",
+        extra={
+            "bytes": len(image_bytes),
+            "content_type": content_type or "unknown",
+            "file_name": safe_name,
+        },
+    )
+    return _ocr_bytes(image_bytes, content_type, safe_name, input_type="file", source_url=None)
 
 
 def _ocr_bytes(
     image_bytes: bytes,
     content_type: str | None,
+    filename: str,
     input_type: str,
     source_url: str | None,
 ) -> ProcessedResult:
     if not settings.ocr_space_api_key:
+        logger.error("OCR API key not configured")
         raise ServiceError("OCR API key not configured", code="config_error", status_code=500)
 
     if not image_bytes:
         raise ServiceError("Empty image payload", code="invalid_input", status_code=400)
 
     files = {
-        "file": ("image", image_bytes, content_type or "application/octet-stream"),
+        "file": (filename, image_bytes, content_type or "application/octet-stream"),
     }
 
     data = {
         "apikey": settings.ocr_space_api_key,
         "language": "eng",
     }
+    filetype = _filetype_from_name(filename)
+    if filetype:
+        data["filetype"] = filetype
 
     try:
         response = requests.post(
@@ -49,7 +63,18 @@ def _ocr_bytes(
         logger.error("OCR request failed", exc_info=True)
         raise ServiceError("Failed to reach OCR service", code="ocr_unavailable", status_code=502) from exc
 
+    logger.info(
+        "OCR response received",
+        extra={"status_code": response.status_code},
+    )
     if response.status_code >= 400:
+        logger.warning(
+            "OCR service error",
+            extra={
+                "status_code": response.status_code,
+                "body_snippet": response.text[:500],
+            },
+        )
         raise ServiceError(
             f"OCR service returned {response.status_code}",
             code="ocr_failed",
@@ -81,3 +106,29 @@ def _ocr_bytes(
         source_url=source_url,
         size_bytes=len(image_bytes),
     )
+
+
+def _safe_filename(filename: str | None, content_type: str | None) -> str:
+    if filename and "." in filename:
+        return filename
+    extension = _extension_from_content_type(content_type)
+    return f"image.{extension}"
+
+
+def _extension_from_content_type(content_type: str | None) -> str:
+    mapping = {
+        "image/jpeg": "jpg",
+        "image/png": "png",
+    }
+    return mapping.get(content_type or "", "jpg")
+
+
+def _filetype_from_name(filename: str) -> str | None:
+    if "." not in filename:
+        return None
+    ext = filename.rsplit(".", 1)[1].lower()
+    if ext in {"jpg", "jpeg"}:
+        return "JPG"
+    if ext == "png":
+        return "PNG"
+    return None

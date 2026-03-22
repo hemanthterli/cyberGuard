@@ -1,3 +1,4 @@
+import logging
 import time
 from typing import Any, Callable
 from uuid import uuid4
@@ -12,6 +13,7 @@ from app.services.errors import ServiceError
 from app.services.types import ProcessedResult
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 ERROR_EXAMPLE = {
@@ -91,11 +93,17 @@ def _service_call(
 ) -> StandardResponse:
     start = time.perf_counter()
     try:
+        logger.info("Request start", extra={"source": source})
         result = func(*args, **kwargs)
     except ServiceError as exc:
+        logger.warning(
+            "Service error",
+            extra={"source": source, "code": exc.code, "status_code": exc.status_code},
+        )
         raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "detail": exc.message})
     duration_ms = int((time.perf_counter() - start) * 1000)
     request_id = getattr(request.state, "request_id", str(uuid4()))
+    logger.info("Request complete", extra={"source": source, "duration_ms": duration_ms})
     return _build_response(result, request_id, source, duration_ms)
 
 
@@ -145,6 +153,7 @@ async def image_endpoint(request: Request, file: UploadFile = File(...)) -> Stan
         request,
         image_bytes,
         file.content_type,
+        file.filename,
     )
 
 

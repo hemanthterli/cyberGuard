@@ -4,7 +4,7 @@ from app.services.types import ProcessedResult
 
 
 def test_image_success(client, monkeypatch):
-    def fake_process(_image_bytes, _content_type):
+    def fake_process(_image_bytes, _content_type, _filename):
         return ProcessedResult(text="ok", input_type="file", source_url=None, size_bytes=10)
 
     monkeypatch.setattr(image_service, "process_image_bytes", fake_process)
@@ -35,7 +35,7 @@ def test_image_edge_case_empty_file(client):
 
 
 def test_image_service_failure(client, monkeypatch):
-    def fake_process(_image_bytes, _content_type):
+    def fake_process(_image_bytes, _content_type, _filename):
         raise ServiceError("boom", code="ocr_failed", status_code=422)
 
     monkeypatch.setattr(image_service, "process_image_bytes", fake_process)
