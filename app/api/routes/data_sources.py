@@ -305,6 +305,7 @@ async def text_endpoint(payload: TextInput, request: Request) -> StandardRespons
     response_model=CoreDecisionResponse,
     responses=ERROR_RESPONSES,
     summary="Analyze content for bullying/harassment",
+     tags=["Decision"],
 )
 async def core_decision_endpoint(payload: CoreDecisionInput, request: Request) -> CoreDecisionResponse:
     return _decision_call(core_decision_service.analyze_bullying, "core-decision", request, payload)
