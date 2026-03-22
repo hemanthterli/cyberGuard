@@ -1,0 +1,153 @@
+
+# --- cell 1 ---
+print("hii")
+
+# --- cell 2 ---
+from google import genai
+from google.genai import types
+
+
+decision_function = {
+    "name": "analyze_bullying_content",
+    "description": "Analyze content and decide if it is bullying, harassment, or negative targeting of a person",
+    "parameters": {
+        "type": "object",
+        "properties": {
+
+            "bullying": {
+                "type": "string",
+                "description": "yes or no"
+            },
+
+            "description": {
+                "type": "string",
+                "description": "Short explanation (15-20 words)"
+            },
+
+            "phrases": {
+                "type": "string",
+                "description": "Exact phrases from content that show bullying"
+            },
+
+            "source": {
+                "type": "string",
+                "description": "Source link given in input"
+            },
+
+            "impact_action": {
+                "type": "string",
+                "description": "Possible action user can take like report, complaint, legal action"
+            }
+
+        },
+
+        "required": [
+            "bullying",
+            "description",
+            "phrases",
+            "source",
+            "impact_action"
+        ]
+    }
+}
+
+# --- cell 3 ---
+from google import genai
+from google.genai import types
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+client = genai.Client()
+
+tools = types.Tool(
+    function_declarations=[decision_function]
+)
+
+config = types.GenerateContentConfig(
+    tools=[tools],
+    tool_config=types.ToolConfig(
+        function_calling_config=types.FunctionCallingConfig(
+            mode="ANY"
+        )
+    )
+)
+
+print("✅ Gemini ready")
+
+# --- cell 4 ---
+input_json = {
+    "source": "https://youtube.com/test",
+    "source_type": "youtube",
+    "content": "I’ve heard from multiple people that you lie constantly and manipulate others for your own benefit. It’s shocking how fake you are in public while being completely toxic behind the scenes. No one should trust anything you say because you’re known for deceiving people whenever it suits you."
+}
+
+# --- cell 5 ---
+def build_prompt(data):
+
+    return f"""
+You are a cyber safety analyzer.
+
+Input JSON contains:
+- source
+- source_type
+- content
+- user_context
+
+Your job:
+
+1. Detect if content is bullying or targeting a person negatively
+2. If no → bullying = no
+3. If yes → bullying = yes
+4. Extract exact phrases causing bullying
+5. Give short description
+6. Return source exactly
+7. Suggest impact action
+
+Input:
+
+{data}
+"""
+
+# --- cell 6 ---
+def run_classifier(data):
+
+    prompt = build_prompt(data)
+
+    response = client.models.generate_content(
+        model="gemini-3-flash-preview",
+        contents=prompt,
+        config=config
+    )
+
+    part = response.candidates[0].content.parts[0]
+
+    if part.function_call:
+
+        call = part.function_call
+
+        print("Function:", call.name)
+        print("Args:", call.args)
+
+        return call.args
+
+    else:
+        print("No function call")
+        print(response.text)
+
+# --- cell 7 ---
+result = run_classifier(input_json)
+
+print(result)
+
+# --- cell 8 ---
+
+
+# --- cell 9 ---
+
+
+# --- cell 10 ---
+
+
+# --- cell 11 ---
