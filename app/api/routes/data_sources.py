@@ -6,9 +6,16 @@ from uuid import uuid4
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 
 from app.core.config import settings
-from app.schemas.requests import TextInput, UrlInput
-from app.schemas.responses import ProcessedTextData, ResponseMeta, StandardResponse
+from app.schemas.requests import CoreDecisionInput, TextInput, UrlInput
+from app.schemas.responses import (
+    CoreDecisionData,
+    CoreDecisionResponse,
+    ProcessedTextData,
+    ResponseMeta,
+    StandardResponse,
+)
 from app.services import audio_service, image_service, news_service, text_service, youtube_service
+from app.services import core_decision_service
 from app.services.errors import ServiceError
 from app.services.types import ProcessedResult
 
@@ -107,6 +114,52 @@ def _service_call(
     return _build_response(result, request_id, source, duration_ms)
 
 
+def _build_decision_response(
+    result: CoreDecisionData,
+    request_id: str,
+    source: str,
+    duration_ms: int,
+) -> CoreDecisionResponse:
+    meta = ResponseMeta(
+        request_id=request_id,
+        source=source,
+        input_type="json",
+        duration_ms=duration_ms,
+        size_bytes=None,
+        source_url=None,
+    )
+    return CoreDecisionResponse(
+        success=True,
+        message="Core decision processed successfully",
+        data=result,
+        meta=meta,
+        error=None,
+    )
+
+
+def _decision_call(
+    func: Callable[..., CoreDecisionData],
+    source: str,
+    request: Request,
+    *args,
+    **kwargs,
+) -> CoreDecisionResponse:
+    start = time.perf_counter()
+    try:
+        logger.info("Request start", extra={"source": source})
+        result = func(*args, **kwargs)
+    except ServiceError as exc:
+        logger.warning(
+            "Service error",
+            extra={"source": source, "code": exc.code, "status_code": exc.status_code},
+        )
+        raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "detail": exc.message})
+    duration_ms = int((time.perf_counter() - start) * 1000)
+    request_id = getattr(request.state, "request_id", str(uuid4()))
+    logger.info("Request complete", extra={"source": source, "duration_ms": duration_ms})
+    return _build_decision_response(result, request_id, source, duration_ms)
+
+
 async def _read_upload(
     file: UploadFile,
     *,
@@ -185,3 +238,13 @@ async def news_article_endpoint(payload: UrlInput, request: Request) -> Standard
 )
 async def text_endpoint(payload: TextInput, request: Request) -> StandardResponse:
     return _service_call(text_service.process_text_content, "text", request, payload.text)
+
+
+@router.post(
+    "/core-decision",
+    response_model=CoreDecisionResponse,
+    responses=ERROR_RESPONSES,
+    summary="Analyze content for bullying/harassment",
+)
+async def core_decision_endpoint(payload: CoreDecisionInput, request: Request) -> CoreDecisionResponse:
+    return _decision_call(core_decision_service.analyze_bullying, "core-decision", request, payload)

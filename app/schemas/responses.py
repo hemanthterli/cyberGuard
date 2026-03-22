@@ -25,3 +25,19 @@ class StandardResponse(BaseModel):
     data: ProcessedTextData | None
     meta: ResponseMeta
     error: ErrorInfo | None = None
+
+
+class CoreDecisionData(BaseModel):
+    bullying: str
+    description: str
+    phrases: str
+    source: str
+    impact_action: str
+
+
+class CoreDecisionResponse(BaseModel):
+    success: bool
+    message: str
+    data: CoreDecisionData | None
+    meta: ResponseMeta
+    error: ErrorInfo | None = None

@@ -24,6 +24,9 @@ python-dotenv
 # --- HTTP ---
 requests
 
+# --- Gemini ---
+google-genai
+
 # --- Vector Search / AI Retrieval ---
 faiss-cpu
 
