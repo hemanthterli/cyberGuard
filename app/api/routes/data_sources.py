@@ -6,7 +6,7 @@ from uuid import uuid4
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 
 from app.core.config import settings
-from app.schemas.requests import CoreDecisionInput, TextInput, UrlInput
+from app.schemas.requests import ContentEnhancementInput, CoreDecisionInput, TextInput, UrlInput
 from app.schemas.responses import (
     CoreDecisionData,
     CoreDecisionResponse,
@@ -15,6 +15,7 @@ from app.schemas.responses import (
     StandardResponse,
 )
 from app.services import audio_service, image_service, news_service, text_service, youtube_service
+from app.services import content_enhancement_service
 from app.services import core_decision_service
 from app.services.errors import ServiceError
 from app.services.types import ProcessedResult
@@ -248,3 +249,22 @@ async def text_endpoint(payload: TextInput, request: Request) -> StandardRespons
 )
 async def core_decision_endpoint(payload: CoreDecisionInput, request: Request) -> CoreDecisionResponse:
     return _decision_call(core_decision_service.analyze_bullying, "core-decision", request, payload)
+
+
+@router.post(
+    "/content-enhancement",
+    response_model=StandardResponse,
+    responses=ERROR_RESPONSES,
+    summary="Enhance and structure raw content",
+    tags=["Content Processing"],
+)
+async def content_enhancement_endpoint(
+    payload: ContentEnhancementInput,
+    request: Request,
+) -> StandardResponse:
+    return _service_call(
+        content_enhancement_service.enhance_content,
+        "content-enhancement",
+        request,
+        payload,
+    )

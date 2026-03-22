@@ -11,6 +11,7 @@ class Settings:
     ocr_space_api_key: str | None = os.getenv("OCR_SPACE_API_KEY")
     gemini_api_key: str | None = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+    gemini_enhance_model: str = os.getenv("GEMINI_ENHANCE_MODEL", gemini_model)
     whisper_model: str = os.getenv("WHISPER_MODEL", "base")
     whisper_device: str = os.getenv("WHISPER_DEVICE", "cpu")
     whisper_compute_type: str = os.getenv("WHISPER_COMPUTE_TYPE", "int8")

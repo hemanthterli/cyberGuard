@@ -17,3 +17,10 @@ class CoreDecisionInput(BaseModel):
     source_type: str = Field(..., min_length=1)
     content: str = Field(..., min_length=1)
     user_context: str | None = Field(default=None, min_length=1)
+
+
+class ContentEnhancementInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    source_type: str = Field(..., min_length=1)
+    source: str | None = Field(default=None, min_length=1)
+    content: str = Field(..., min_length=1)
