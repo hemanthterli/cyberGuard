@@ -16,7 +16,7 @@ class CoreDecisionInput(BaseModel):
     source: str = Field(..., min_length=1)
     source_type: str = Field(..., min_length=1)
     content: str = Field(..., min_length=1)
-    user_context: str | None = Field(default=None, min_length=1)
+    user_context: str | None = Field(default=None, min_length=0)
 
 
 class ContentEnhancementInput(BaseModel):
