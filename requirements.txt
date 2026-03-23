@@ -9,9 +9,7 @@ faster-whisper
 
 
 # --- YouTube Processing ---
-yt-dlp
 youtube-transcript-api
-webvtt-py
 
 # --- API Server ---
 fastapi
