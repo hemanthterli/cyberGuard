@@ -4,12 +4,14 @@ from typing import Any
 
 from app.core.config import settings
 from app.schemas.requests import ComplaintDraftInput
+from app.services import language_service
 from app.services.errors import ServiceError
 
 logger = logging.getLogger(__name__)
 
 
 def generate_complaint_letter(payload: ComplaintDraftInput) -> str:
+    output_language = language_service.normalize_language(payload.language)
     summary = payload.summary.strip()
     if not summary:
         raise ServiceError("Empty summary", code="invalid_input", status_code=400)
@@ -57,7 +59,11 @@ def generate_complaint_letter(payload: ComplaintDraftInput) -> str:
     if not text:
         raise ServiceError("Model returned empty complaint", code="model_failed", status_code=502)
 
-    return text
+    return language_service.translate_text(
+        text,
+        output_language,
+        context="final complaint letter",
+    )
 
 
 def _build_prompt(

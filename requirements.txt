@@ -21,6 +21,7 @@ python-dotenv
 
 # --- HTTP ---
 requests
+deep-translator
 
 # --- Gemini ---
 google-genai

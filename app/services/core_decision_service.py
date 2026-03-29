@@ -5,6 +5,7 @@ from app.core.config import settings
 from app.schemas.requests import CoreDecisionInput
 from app.schemas.responses import CoreDecisionData
 from app.services.errors import ServiceError
+from app.services import language_service
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ _DECISION_FUNCTION = {
 
 
 def analyze_bullying(data: CoreDecisionInput) -> CoreDecisionData:
+    output_language = language_service.normalize_language(data.language)
     input_payload = {
         "source": data.source.strip(),
         "source_type": data.source_type.strip(),
@@ -119,7 +121,8 @@ def analyze_bullying(data: CoreDecisionInput) -> CoreDecisionData:
             logger.error("Invalid function args", exc_info=True)
             raise ServiceError("Invalid model output", code="model_failed", status_code=502) from exc
 
-    return _parse_output(args, input_payload["source"])
+    result = _parse_output(args, input_payload["source"])
+    return _translate_output(result, output_language)
 
 
 def _build_prompt(payload: dict[str, Any]) -> str:
@@ -160,4 +163,26 @@ def _parse_output(args: dict[str, Any], fallback_source: str) -> CoreDecisionDat
         source=_get("source") if args.get("source") else fallback_source,
         impact_action=_get("impact_action"),
         core_cybercrime=_get("core_cybercrime"),
+    )
+
+
+def _translate_output(result: CoreDecisionData, language: str) -> CoreDecisionData:
+    translated_fields = language_service.translate_object_values(
+        {
+            "description": result.description,
+            "phrases": result.phrases,
+            "impact_action": result.impact_action,
+            "core_cybercrime": result.core_cybercrime,
+        },
+        language,
+        context="final analysis output",
+    )
+
+    return CoreDecisionData(
+        bullying=result.bullying,
+        description=translated_fields["description"],
+        phrases=translated_fields["phrases"],
+        source=result.source,
+        impact_action=translated_fields["impact_action"],
+        core_cybercrime=translated_fields["core_cybercrime"],
     )

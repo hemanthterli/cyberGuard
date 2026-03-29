@@ -17,6 +17,7 @@ class CoreDecisionInput(BaseModel):
     source_type: str = Field(..., min_length=1)
     content: str = Field(..., min_length=1)
     user_context: str | None = Field(default=None, min_length=0)
+    language: str | None = Field(default="english", min_length=1)
 
 
 class ContentEnhancementInput(BaseModel):
@@ -31,6 +32,7 @@ class CyberLawsInput(BaseModel):
     content: str = Field(..., min_length=1)
     core_decision: dict = Field(..., description="Core decision output JSON")
     retrieved_laws: list[str] = Field(default_factory=list)
+    language: str | None = Field(default="english", min_length=1)
 
 
 class ComplaintDraftInput(BaseModel):
@@ -39,3 +41,4 @@ class ComplaintDraftInput(BaseModel):
     detected_phrases: list[str] = Field(default_factory=list)
     applicable_laws: list[dict] = Field(default_factory=list)
     recommended_actions: list[str] = Field(default_factory=list)
+    language: str | None = Field(default="english", min_length=1)
