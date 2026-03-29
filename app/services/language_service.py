@@ -20,8 +20,9 @@ _LANGUAGE_CODES = {
     "telugu": "te",
 }
 
-_PROTECTED_PATTERNS = [
-    re.compile(r"\[[^\[\]\n]+\]"),
+_BRACKET_PATTERN = re.compile(r"\[[^\[\]\n]+\]")
+
+_BASE_PROTECTED_PATTERNS = [
     re.compile(r"https?://[^\s]+"),
     re.compile(r"www\.[^\s]+"),
     re.compile(r"\b(?:Section|Sec\.?|Article|Act|IPC|CrPC|IT Act)\s*[A-Za-z0-9()./\-]+\b", re.IGNORECASE),
@@ -45,7 +46,13 @@ def normalize_language(language: str | None) -> str:
     return normalized
 
 
-def translate_text(text: str, target_language: str, *, context: str) -> str:
+def translate_text(
+    text: str,
+    target_language: str,
+    *,
+    context: str,
+    preserve_bracketed: bool = True,
+) -> str:
     normalized = normalize_language(target_language)
     if normalized == "english":
         return text
@@ -56,12 +63,18 @@ def translate_text(text: str, target_language: str, *, context: str) -> str:
     target_code = _LANGUAGE_CODES[normalized]
     translator = _build_translator(source_code, target_code)
 
-    protected_text, token_map = _protect_fragments(text)
+    protected_text, token_map = _protect_fragments(text, preserve_bracketed=preserve_bracketed)
     translated = _translate_with_chunking(protected_text, translator, context=context)
     return _restore_fragments(translated, token_map)
 
 
-def translate_object_values(values: dict[str, str], target_language: str, *, context: str) -> dict[str, str]:
+def translate_object_values(
+    values: dict[str, str],
+    target_language: str,
+    *,
+    context: str,
+    preserve_bracketed: bool = True,
+) -> dict[str, str]:
     normalized = normalize_language(target_language)
     if normalized == "english":
         return values
@@ -78,7 +91,7 @@ def translate_object_values(values: dict[str, str], target_language: str, *, con
         if not text_value:
             result[key] = str(original_value)
             continue
-        protected_text, token_map = _protect_fragments(text_value)
+        protected_text, token_map = _protect_fragments(text_value, preserve_bracketed=preserve_bracketed)
         translated = _translate_with_chunking(protected_text, translator, context=f"{context}:{key}")
         restored = _restore_fragments(translated, token_map).strip()
         result[key] = restored or str(original_value)
@@ -99,12 +112,16 @@ def _build_translator(source_code: str, target_code: str):
         raise ServiceError("Translator initialization failed", code="dependency_missing", status_code=500) from exc
 
 
-def _protect_fragments(text: str) -> tuple[str, dict[str, str]]:
+def _protect_fragments(text: str, *, preserve_bracketed: bool) -> tuple[str, dict[str, str]]:
     token_map: dict[str, str] = {}
     protected = text
     token_index = 0
 
-    for pattern in _PROTECTED_PATTERNS:
+    patterns = list(_BASE_PROTECTED_PATTERNS)
+    if preserve_bracketed:
+        patterns.insert(0, _BRACKET_PATTERN)
+
+    for pattern in patterns:
         def _replace(match: re.Match[str]) -> str:
             nonlocal token_index
             token = f"__PROTECTED_{token_index}__"

@@ -3,6 +3,7 @@ from typing import Any
 
 from app.core.config import settings
 from app.schemas.requests import ContentEnhancementInput
+from app.services import gemini_error_handler
 from app.services.errors import ServiceError
 from app.services.types import ProcessedResult
 
@@ -51,6 +52,7 @@ def enhance_content(payload: ContentEnhancementInput) -> ProcessedResult:
             config=config,
         )
     except Exception as exc:  # noqa: BLE001
+        gemini_error_handler.raise_if_model_busy(exc)
         logger.error("Gemini enhancement failed", exc_info=True)
         raise ServiceError("Failed to enhance content", code="model_failed", status_code=502) from exc
 

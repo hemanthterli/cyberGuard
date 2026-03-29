@@ -4,6 +4,7 @@ from typing import Any
 from app.core.config import settings
 from app.schemas.requests import CoreDecisionInput
 from app.schemas.responses import CoreDecisionData
+from app.services import gemini_error_handler
 from app.services.errors import ServiceError
 from app.services import language_service
 
@@ -98,6 +99,7 @@ def analyze_bullying(data: CoreDecisionInput) -> CoreDecisionData:
             config=config,
         )
     except Exception as exc:  # noqa: BLE001
+        gemini_error_handler.raise_if_model_busy(exc)
         logger.error("Gemini request failed", exc_info=True)
         raise ServiceError("Failed to run decision model", code="model_failed", status_code=502) from exc
 

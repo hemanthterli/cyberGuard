@@ -1,10 +1,11 @@
-import json
 import logging
+import json
+import re
 from typing import Any
 
 from app.core.config import settings
 from app.schemas.requests import ComplaintDraftInput
-from app.services import language_service
+from app.services import gemini_error_handler, language_service
 from app.services.errors import ServiceError
 
 logger = logging.getLogger(__name__)
@@ -52,6 +53,7 @@ def generate_complaint_letter(payload: ComplaintDraftInput) -> str:
             config=config,
         )
     except Exception as exc:  # noqa: BLE001
+        gemini_error_handler.raise_if_model_busy(exc)
         logger.error("Gemini complaint drafting failed", exc_info=True)
         raise ServiceError("Failed to draft complaint", code="model_failed", status_code=502) from exc
 
@@ -59,11 +61,13 @@ def generate_complaint_letter(payload: ComplaintDraftInput) -> str:
     if not text:
         raise ServiceError("Model returned empty complaint", code="model_failed", status_code=502)
 
-    return language_service.translate_text(
+    translated = language_service.translate_text(
         text,
         output_language,
         context="final complaint letter",
+        preserve_bracketed=False,
     )
+    return _localize_complaint_structure(translated, output_language)
 
 
 def _build_prompt(
@@ -125,3 +129,63 @@ def _extract_text(response: Any) -> str:
         return str(getattr(part, "text", "")).strip()
     except Exception:  # noqa: BLE001
         return ""
+
+
+def _localize_complaint_structure(text: str, language: str) -> str:
+    heading_map = {
+        "hindi": {
+            "To,": "प्रति,",
+            "Subject: Cyber Crime Complaint": "विषय: साइबर अपराध शिकायत",
+            "Introduction:": "परिचय:",
+            "Incident Description:": "घटना विवरण:",
+            "Evidence / Indicators:": "साक्ष्य / संकेतक:",
+            "Applicable Laws:": "लागू कानून:",
+            "Impact:": "प्रभाव:",
+            "Request:": "अनुरोध:",
+            "Sincerely,": "सादर,",
+        },
+        "telugu": {
+            "To,": "కు,",
+            "Subject: Cyber Crime Complaint": "విషయం: సైబర్ క్రైమ్ ఫిర్యాదు",
+            "Introduction:": "పరిచయం:",
+            "Incident Description:": "ఘటన వివరణ:",
+            "Evidence / Indicators:": "సాక్ష్యాలు / సూచనలు:",
+            "Applicable Laws:": "వర్తించే చట్టాలు:",
+            "Impact:": "ప్రభావం:",
+            "Request:": "అభ్యర్థన:",
+            "Sincerely,": "భవదీయులు,",
+        },
+    }
+
+    placeholder_map = {
+        "hindi": {
+            "[Your Name]": "[आपका नाम]",
+            "[Your Phone Number]": "[आपका फ़ोन नंबर]",
+            "[Your Email Address]": "[आपका ईमेल पता]",
+            "[Your Address]": "[आपका पता]",
+            "[Date]": "[तारीख]",
+            "[Recipient Name / Authority]": "[प्राप्तकर्ता का नाम / प्राधिकरण]",
+            "[Organization Name]": "[संगठन का नाम]",
+            "[Address]": "[पता]",
+        },
+        "telugu": {
+            "[Your Name]": "[మీ పేరు]",
+            "[Your Phone Number]": "[మీ ఫోన్ నంబర్]",
+            "[Your Email Address]": "[మీ ఇమెయిల్ చిరునామా]",
+            "[Your Address]": "[మీ చిరునామా]",
+            "[Date]": "[తేదీ]",
+            "[Recipient Name / Authority]": "[గ్రహీత పేరు / అధికారి]",
+            "[Organization Name]": "[సంస్థ పేరు]",
+            "[Address]": "[చిరునామా]",
+        },
+    }
+
+    localized = text
+
+    for source, target in heading_map.get(language, {}).items():
+        localized = re.sub(rf"(?im)^\s*{re.escape(source)}\s*$", target, localized)
+
+    for source, target in placeholder_map.get(language, {}).items():
+        localized = localized.replace(source, target)
+
+    return localized

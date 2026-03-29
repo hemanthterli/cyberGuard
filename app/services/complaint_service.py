@@ -5,6 +5,7 @@ from typing import Any
 from app.core.config import settings
 from app.schemas.requests import ComplaintGenerationInput
 from app.schemas.responses import ComplaintLaw, ComplaintOutput
+from app.services import gemini_error_handler
 from app.services.errors import ServiceError
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,7 @@ def generate_complaint(payload: ComplaintGenerationInput) -> ComplaintOutput:
             config=config,
         )
     except Exception as exc:  # noqa: BLE001
+        gemini_error_handler.raise_if_model_busy(exc)
         logger.error("Gemini complaint generation failed", exc_info=True)
         raise ServiceError("Failed to generate complaint", code="model_failed", status_code=502) from exc
 

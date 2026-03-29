@@ -6,6 +6,7 @@ from typing import Any
 from app.core.config import settings
 from app.schemas.requests import CyberLawsInput
 from app.schemas.responses import ComplaintLaw, ComplaintOutput
+from app.services import gemini_error_handler, language_service
 from app.services.errors import ServiceError
 
 logger = logging.getLogger(__name__)
@@ -49,6 +50,7 @@ _COMPLAINT_FUNCTION = {
 
 
 def analyze_cyber_laws(payload: CyberLawsInput) -> ComplaintOutput:
+    output_language = language_service.normalize_language(payload.language)
     content = payload.content.strip()
     if not content:
         raise ServiceError("Empty content", code="invalid_input", status_code=400)
@@ -107,6 +109,7 @@ def analyze_cyber_laws(payload: CyberLawsInput) -> ComplaintOutput:
             config=config,
         )
     except Exception as exc:  # noqa: BLE001
+        gemini_error_handler.raise_if_model_busy(exc)
         logger.error("Gemini complaint generation failed", exc_info=True)
         raise ServiceError("Failed to generate complaint", code="model_failed", status_code=502) from exc
 
@@ -130,7 +133,8 @@ def analyze_cyber_laws(payload: CyberLawsInput) -> ComplaintOutput:
             logger.error("Invalid function args", exc_info=True)
             raise ServiceError("Invalid model output", code="model_failed", status_code=502) from exc
 
-    return _parse_output(args)
+    result = _parse_output(args)
+    return _translate_output(result, output_language)
 
 
 def retrieve_laws(core_cybercrime: str) -> list[str]:
@@ -139,7 +143,11 @@ def retrieve_laws(core_cybercrime: str) -> list[str]:
         raise ServiceError("Empty core_cybercrime", code="invalid_input", status_code=400)
 
     db = _get_db()
-    results = db.similarity_search_with_score(query, k=settings.cyberlaw_top_k)
+    try:
+        results = db.similarity_search_with_score(query, k=settings.cyberlaw_top_k)
+    except Exception as exc:  # noqa: BLE001
+        gemini_error_handler.raise_if_model_busy(exc)
+        raise ServiceError("Failed to retrieve cyber laws", code="model_failed", status_code=502) from exc
     snippets: list[str] = []
     for doc, score in results:
         snippets.append(_format_doc(doc, score))
@@ -247,4 +255,37 @@ def _parse_output(args: dict[str, Any]) -> ComplaintOutput:
         detected_phrases=detected_phrases,
         applicable_laws=applicable_laws,
         recommended_actions=recommended_actions,
+    )
+
+
+def _translate_output(result: ComplaintOutput, language: str) -> ComplaintOutput:
+    translated_summary = language_service.translate_object_values(
+        {"summary": result.summary},
+        language,
+        context="cyber laws summary",
+    )["summary"]
+
+    translated_laws: list[ComplaintLaw] = []
+    for item in result.applicable_laws:
+        translated_description = language_service.translate_text(
+            item.description,
+            language,
+            context="cyber law description",
+        )
+        translated_laws.append(ComplaintLaw(law=item.law, description=translated_description))
+
+    translated_actions = [
+        language_service.translate_text(action, language, context="recommended action")
+        for action in result.recommended_actions
+    ]
+    translated_phrases = [
+        language_service.translate_text(phrase, language, context="detected phrase")
+        for phrase in result.detected_phrases
+    ]
+
+    return ComplaintOutput(
+        summary=translated_summary,
+        detected_phrases=translated_phrases,
+        applicable_laws=translated_laws,
+        recommended_actions=translated_actions,
     )
