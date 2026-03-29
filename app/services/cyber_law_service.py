@@ -6,12 +6,12 @@ from typing import Any
 from app.core.config import settings
 from app.schemas.requests import CyberLawsInput
 from app.schemas.responses import ComplaintLaw, ComplaintOutput
-from app.services import gemini_error_handler, language_service
+from app.services import gemini_error_handler, language_service, location_service
 from app.services.errors import ServiceError
 
 logger = logging.getLogger(__name__)
 
-_db = None
+_db_cache: dict[str, Any] = {}
 _embeddings = None
 
 _COMPLAINT_FUNCTION = {
@@ -51,6 +51,7 @@ _COMPLAINT_FUNCTION = {
 
 def analyze_cyber_laws(payload: CyberLawsInput) -> ComplaintOutput:
     output_language = language_service.normalize_language(payload.language)
+    jurisdiction = location_service.normalize_location(payload.location)
     content = payload.content.strip()
     if not content:
         raise ServiceError("Empty content", code="invalid_input", status_code=400)
@@ -75,7 +76,7 @@ def analyze_cyber_laws(payload: CyberLawsInput) -> ComplaintOutput:
     if not retrieved_laws:
         core_cybercrime = str(core_decision.get("core_cybercrime", "")).strip()
         if core_cybercrime:
-            retrieved_laws = retrieve_laws(core_cybercrime)
+            retrieved_laws = retrieve_laws(core_cybercrime, jurisdiction)
 
     try:
         from google import genai
@@ -100,7 +101,8 @@ def analyze_cyber_laws(payload: CyberLawsInput) -> ComplaintOutput:
         max_output_tokens=2048,
     )
 
-    prompt = _build_prompt(content, core_decision, retrieved_laws)
+    jurisdiction_label = location_service.get_location_label(jurisdiction)
+    prompt = _build_prompt(content, core_decision, retrieved_laws, jurisdiction_label)
 
     try:
         response = client.models.generate_content(
@@ -134,15 +136,17 @@ def analyze_cyber_laws(payload: CyberLawsInput) -> ComplaintOutput:
             raise ServiceError("Invalid model output", code="model_failed", status_code=502) from exc
 
     result = _parse_output(args)
-    return _translate_output(result, output_language)
+    translated = _translate_output(result, output_language)
+    return _attach_jurisdiction_notice(translated, jurisdiction, output_language)
 
 
-def retrieve_laws(core_cybercrime: str) -> list[str]:
+def retrieve_laws(core_cybercrime: str, location: str) -> list[str]:
     query = core_cybercrime.strip()
     if not query:
         raise ServiceError("Empty core_cybercrime", code="invalid_input", status_code=400)
 
-    db = _get_db()
+    normalized_location = location_service.normalize_location(location)
+    db = _get_db(normalized_location)
     try:
         results = db.similarity_search_with_score(query, k=settings.cyberlaw_top_k)
     except Exception as exc:  # noqa: BLE001
@@ -155,10 +159,10 @@ def retrieve_laws(core_cybercrime: str) -> list[str]:
     return snippets
 
 
-def _get_db():
-    global _db, _embeddings
-    if _db is not None:
-        return _db
+def _get_db(location: str):
+    global _embeddings
+    if location in _db_cache:
+        return _db_cache[location]
 
     try:
         from langchain_community.vectorstores import FAISS
@@ -170,7 +174,7 @@ def _get_db():
     if not settings.gemini_api_key:
         raise ServiceError("GEMINI_API_KEY not configured", code="config_error", status_code=500)
 
-    index_path = Path(settings.cyberlaw_faiss_path)
+    index_path = _get_index_path_for_location(location)
     if not index_path.is_absolute():
         base_dir = Path(__file__).resolve().parents[2]
         index_path = base_dir / index_path
@@ -178,13 +182,28 @@ def _get_db():
     if not index_path.exists():
         raise ServiceError("Cyber law index not found", code="config_error", status_code=500)
 
-    _embeddings = GoogleGenerativeAIEmbeddings(model=settings.cyberlaw_embedding_model)
-    _db = FAISS.load_local(
+    if _embeddings is None:
+        _embeddings = GoogleGenerativeAIEmbeddings(model=settings.cyberlaw_embedding_model)
+
+    db = FAISS.load_local(
         str(index_path),
         _embeddings,
         allow_dangerous_deserialization=True,
     )
-    return _db
+    _db_cache[location] = db
+    return db
+
+
+def _get_index_path_for_location(location: str) -> Path:
+    location_paths = {
+        "india": settings.cyberlaw_india_faiss_path,
+        "uk": settings.cyberlaw_uk_faiss_path,
+        "usa": settings.cyberlaw_usa_faiss_path,
+    }
+    selected = location_paths.get(location)
+    if not selected:
+        raise ServiceError("Unsupported location", code="invalid_input", status_code=400)
+    return Path(selected)
 
 
 def _format_doc(doc, score: float) -> str:
@@ -203,9 +222,14 @@ def _format_doc(doc, score: float) -> str:
     return f"{prefix}\n{text}"
 
 
-def _build_prompt(content: str, core_decision: dict[str, Any], retrieved_laws: list[str]) -> str:
+def _build_prompt(
+    content: str,
+    core_decision: dict[str, Any],
+    retrieved_laws: list[str],
+    jurisdiction: str,
+) -> str:
     return (
-        "You are a legal assistant for Indian cyber safety.\n\n"
+        f"You are a legal assistant for {jurisdiction} cyber safety.\n\n"
         "Use ONLY the provided retrieved laws. Do NOT hallucinate any laws.\n"
         "Be clear, structured, and supportive.\n\n"
         "Inputs:\n"
@@ -288,4 +312,21 @@ def _translate_output(result: ComplaintOutput, language: str) -> ComplaintOutput
         detected_phrases=translated_phrases,
         applicable_laws=translated_laws,
         recommended_actions=translated_actions,
+    )
+
+
+def _attach_jurisdiction_notice(result: ComplaintOutput, location: str, language: str) -> ComplaintOutput:
+    country_label = location_service.get_location_label(location)
+    notice = f"The following cyber laws are based on {country_label}."
+    localized_notice = language_service.translate_text(
+        notice,
+        language,
+        context="jurisdiction notice",
+    )
+    summary_with_notice = f"{localized_notice}\n\n{result.summary}" if result.summary else localized_notice
+    return ComplaintOutput(
+        summary=summary_with_notice,
+        detected_phrases=result.detected_phrases,
+        applicable_laws=result.applicable_laws,
+        recommended_actions=result.recommended_actions,
     )

@@ -5,7 +5,7 @@ from typing import Any
 
 from app.core.config import settings
 from app.schemas.requests import ComplaintDraftInput
-from app.services import gemini_error_handler, language_service
+from app.services import gemini_error_handler, language_service, location_service
 from app.services.errors import ServiceError
 
 logger = logging.getLogger(__name__)
@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 def generate_complaint_letter(payload: ComplaintDraftInput) -> str:
     output_language = language_service.normalize_language(payload.language)
+    jurisdiction = location_service.normalize_location(payload.location)
+    jurisdiction_label = location_service.get_location_label(jurisdiction)
     summary = payload.summary.strip()
     if not summary:
         raise ServiceError("Empty summary", code="invalid_input", status_code=400)
@@ -38,6 +40,7 @@ def generate_complaint_letter(payload: ComplaintDraftInput) -> str:
         detected_phrases=detected_phrases,
         applicable_laws=applicable_laws,
         recommended_actions=recommended_actions,
+        jurisdiction=jurisdiction_label,
     )
 
     config = types.GenerateContentConfig(
@@ -75,13 +78,16 @@ def _build_prompt(
     detected_phrases: list[str],
     applicable_laws: list[dict[str, Any]],
     recommended_actions: list[str],
+    jurisdiction: str,
 ) -> str:
     return (
         "You are a Cyber Crime Complaint Drafter.\n"
+        f"The legal jurisdiction for this complaint is: {jurisdiction}.\n"
         "Output only a formal complaint letter.\n"
         "Do NOT return JSON. Do NOT add explanations.\n"
         "Follow the structure provided and keep placeholders as written.\n\n"
         "Inputs:\n"
+        f"JURISDICTION: {jurisdiction}\n\n"
         f"SUMMARY: {summary}\n\n"
         f"DETECTED_PHRASES: {json.dumps(detected_phrases, ensure_ascii=False)}\n\n"
         f"APPLICABLE_LAWS: {json.dumps(applicable_laws, ensure_ascii=False)}\n\n"
