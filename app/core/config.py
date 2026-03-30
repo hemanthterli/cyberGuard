@@ -16,6 +16,10 @@ class Settings:
     cyberlaw_india_faiss_path: str = os.getenv("CYBERLAW_INDIA_FAISS_PATH", "RAG/faiss_cyberlaw_index_india")
     cyberlaw_uk_faiss_path: str = os.getenv("CYBERLAW_UK_FAISS_PATH", "RAG/faiss_cyberlaw_index_uk")
     cyberlaw_usa_faiss_path: str = os.getenv("CYBERLAW_USA_FAISS_PATH", "RAG/faiss_cyberlaw_index_america")
+    cyberlaw_international_faiss_path: str = os.getenv(
+        "CYBERLAW_INTERNATIONAL_FAISS_PATH",
+        "RAG/faiss_cyberlaw_index_international",
+    )
     cyberlaw_top_k: int = int(os.getenv("CYBERLAW_TOP_K", "4"))
     cyberlaw_embedding_model: str = os.getenv("CYBERLAW_EMBEDDING_MODEL", "gemini-embedding-001")
     cyberlaw_snippet_chars: int = int(os.getenv("CYBERLAW_SNIPPET_CHARS", "1200"))

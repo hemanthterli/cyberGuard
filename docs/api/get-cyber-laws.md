@@ -32,7 +32,7 @@ Response:
     "summary": "Explanation of the issue",
     "detected_phrases": ["phrase 1", "phrase 2"],
     "applicable_laws": [
-      {"law": "Act/Section", "description": "Brief explanation"}
+      {"law": "Act/Section", "description": "Brief explanation", "source": "https://..."}
     ],
     "recommended_actions": [
       "Step 1...",

@@ -142,8 +142,9 @@ def _normalize_output(data: dict[str, Any]) -> ComplaintOutput:
             if isinstance(item, dict):
                 law = str(item.get("law", "")).strip()
                 description = str(item.get("description", "")).strip()
+                source = str(item.get("source", "")).strip() or "unknown"
                 if law and description:
-                    applicable_laws.append(ComplaintLaw(law=law, description=description))
+                    applicable_laws.append(ComplaintLaw(law=law, description=description, source=source))
 
     recommended_actions_raw = data.get("recommended_actions") or []
     if not isinstance(recommended_actions_raw, list):

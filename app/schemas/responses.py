@@ -47,6 +47,7 @@ class CoreDecisionResponse(BaseModel):
 class ComplaintLaw(BaseModel):
     law: str
     description: str
+    source: str
 
 
 class ComplaintOutput(BaseModel):
