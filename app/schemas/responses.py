@@ -49,11 +49,19 @@ class ComplaintLaw(BaseModel):
     description: str
 
 
+class RAGSource(BaseModel):
+    title: str
+    url: str | None = None
+    category: str | None = None
+
+
 class ComplaintOutput(BaseModel):
     summary: str
     detected_phrases: list[str]
     applicable_laws: list[ComplaintLaw]
     recommended_actions: list[str]
+    country: str = ""
+    rag_sources: list[RAGSource] = Field(default_factory=list)
 
 
 class CyberLawsResponse(BaseModel):

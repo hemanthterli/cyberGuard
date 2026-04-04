@@ -24,6 +24,8 @@ class Settings:
     whisper_compute_type: str = os.getenv("WHISPER_COMPUTE_TYPE", "int8")
     max_download_bytes: int = int(os.getenv("MAX_DOWNLOAD_BYTES", "15728640"))  # 15 MB
     request_timeout_seconds: int = int(os.getenv("REQUEST_TIMEOUT_SECONDS", "20"))
+    enable_whisper: bool = os.getenv("ENABLE_WHISPER", "false").strip().lower() == "true"
+    enable_youtube: bool = os.getenv("ENABLE_YOUTUBE", "false").strip().lower() == "true"
 
 
 settings = Settings()

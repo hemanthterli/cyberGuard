@@ -26,6 +26,12 @@ def _get_model() -> WhisperModel:
 
 
 def process_audio_bytes(audio_bytes: bytes) -> ProcessedResult:
+    if not settings.enable_whisper:
+        raise ServiceError(
+            "Due to hardware limitations, Whisper is not supported in the current production environment.",
+            code="feature_disabled",
+            status_code=503,
+        )
     if not audio_bytes:
         raise ServiceError("Empty audio payload", code="invalid_input", status_code=400)
     return _transcribe_bytes(audio_bytes, input_type="file", source_url=None)

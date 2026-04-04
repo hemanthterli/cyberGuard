@@ -5,7 +5,7 @@ from typing import Any
 
 from app.core.config import settings
 from app.schemas.requests import CyberLawsInput
-from app.schemas.responses import ComplaintLaw, ComplaintOutput
+from app.schemas.responses import ComplaintLaw, ComplaintOutput, RAGSource
 from app.services import gemini_error_handler, language_service, location_service
 from app.services.errors import ServiceError
 
@@ -73,10 +73,11 @@ def analyze_cyber_laws(payload: CyberLawsInput) -> ComplaintOutput:
             raise ServiceError("Incomplete core_decision", code="invalid_input", status_code=400)
 
     retrieved_laws = [law for law in payload.retrieved_laws if isinstance(law, str) and law.strip()]
+    rag_source_metas: list[RAGSource] = []
     if not retrieved_laws:
         core_cybercrime = str(core_decision.get("core_cybercrime", "")).strip()
         if core_cybercrime:
-            retrieved_laws = retrieve_laws(core_cybercrime, jurisdiction)
+            retrieved_laws, rag_source_metas = _retrieve_docs_with_metadata(core_cybercrime, jurisdiction)
 
     try:
         from google import genai
@@ -136,6 +137,13 @@ def analyze_cyber_laws(payload: CyberLawsInput) -> ComplaintOutput:
             raise ServiceError("Invalid model output", code="model_failed", status_code=502) from exc
 
     result = _parse_output(args)
+    result = ComplaintOutput(
+        summary=result.summary,
+        detected_phrases=result.detected_phrases,
+        applicable_laws=result.applicable_laws,
+        recommended_actions=result.recommended_actions,
+        rag_sources=rag_source_metas,
+    )
     translated = _translate_output(result, output_language)
     return _attach_jurisdiction_notice(translated, jurisdiction, output_language)
 
@@ -144,7 +152,13 @@ def retrieve_laws(core_cybercrime: str, location: str) -> list[str]:
     query = core_cybercrime.strip()
     if not query:
         raise ServiceError("Empty core_cybercrime", code="invalid_input", status_code=400)
+    snippets, _ = _retrieve_docs_with_metadata(query, location)
+    return snippets
 
+
+def _retrieve_docs_with_metadata(
+    query: str, location: str
+) -> tuple[list[str], list[RAGSource]]:
     normalized_location = location_service.normalize_location(location)
     db = _get_db(normalized_location)
     try:
@@ -152,11 +166,21 @@ def retrieve_laws(core_cybercrime: str, location: str) -> list[str]:
     except Exception as exc:  # noqa: BLE001
         gemini_error_handler.raise_if_model_busy(exc)
         raise ServiceError("Failed to retrieve cyber laws", code="model_failed", status_code=502) from exc
+
     snippets: list[str] = []
+    sources: list[RAGSource] = []
     for doc, score in results:
         snippets.append(_format_doc(doc, score))
-
-    return snippets
+        if hasattr(doc, "metadata") and isinstance(doc.metadata, dict):
+            raw_url = doc.metadata.get("url")
+            sources.append(
+                RAGSource(
+                    title=str(doc.metadata.get("title") or ""),
+                    url=str(raw_url) if raw_url else None,
+                    category=doc.metadata.get("category") or None,
+                )
+            )
+    return snippets, sources
 
 
 def _get_db(location: str):
@@ -312,6 +336,8 @@ def _translate_output(result: ComplaintOutput, language: str) -> ComplaintOutput
         detected_phrases=translated_phrases,
         applicable_laws=translated_laws,
         recommended_actions=translated_actions,
+        country=result.country,
+        rag_sources=result.rag_sources,
     )
 
 
@@ -329,4 +355,6 @@ def _attach_jurisdiction_notice(result: ComplaintOutput, location: str, language
         detected_phrases=result.detected_phrases,
         applicable_laws=result.applicable_laws,
         recommended_actions=result.recommended_actions,
+        country=country_label,
+        rag_sources=result.rag_sources,
     )

@@ -9,6 +9,7 @@ from youtube_transcript_api._errors import (
     VideoUnavailable,
 )
 
+from app.core.config import settings
 from app.services.errors import ServiceError
 from app.services.types import ProcessedResult
 
@@ -16,6 +17,12 @@ logger = logging.getLogger(__name__)
 
 
 def process_youtube_url(url: str) -> ProcessedResult:
+    if not settings.enable_youtube:
+        raise ServiceError(
+            "YouTube transcription is not available in production due to proxy restrictions.",
+            code="feature_disabled",
+            status_code=503,
+        )
     normalized = _normalize_youtube_url(url)
     video_id = _extract_video_id(normalized)
     transcript = _fetch_transcript(video_id)
