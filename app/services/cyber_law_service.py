@@ -340,7 +340,7 @@ def analyze_cyber_laws(payload: CyberLawsInput) -> ComplaintOutput:
     finalized = _enforce_membership_and_sources(synthesized, ranked_candidates)
     translated = _translate_output(finalized, output_language)
 
-    insufficient = len(translated.applicable_laws) < _MIN_REQUIRED_LAWS
+    insufficient = len(translated.applicable_laws) < _MIN_REQUIRED_LAWS or not bool(validation.get("is_sufficient"))
     insufficient_reason = str(validation.get("reason", "")).strip()
     _trace(
         "pipeline_end",
@@ -430,6 +430,16 @@ def _normalize_text(value: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", value.lower())).strip()
 
 
+def _preview_text(value: Any, *, max_len: int = 320) -> str:
+    if value is None:
+        return ""
+    text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, default=str)
+    compact = re.sub(r"\s+", " ", text).strip()
+    if len(compact) <= max_len:
+        return compact
+    return f"{compact[:max_len]}..."
+
+
 def _rank_candidates(candidates: list[LawCandidate]) -> list[LawCandidate]:
     stage_priority = {
         _STAGE_COUNTRY: 0,
@@ -489,14 +499,17 @@ def _validate_law_coverage(
             _VALIDATE_COVERAGE_FUNCTION,
             prompt,
             max_output_tokens=768,
+            trace_stage=stage,
+            trace_query=query,
+            trace_step="validate_law_coverage",
         )
     except ServiceError as exc:
         if exc.code != "model_failed":
             raise
         fallback_count = len(state["collected_laws"])
         fallback_result = {
-            "is_sufficient": fallback_count >= _MIN_REQUIRED_LAWS,
-            "reason": "Fallback validation used because model returned non-structured output.",
+            "is_sufficient": False,
+            "reason": "Fallback validation used because model returned non-structured output; forcing next fallback stage.",
             "law_count": fallback_count,
         }
         _trace("validate_fallback", stage=stage, fallback=fallback_result)
@@ -506,11 +519,13 @@ def _validate_law_coverage(
     reason = str(args.get("reason", "")).strip()
     law_count = _to_int(args.get("law_count"), default=len(state["collected_laws"]))
 
-    return {
+    result = {
         "is_sufficient": is_sufficient,
         "reason": reason,
         "law_count": law_count,
     }
+    _trace("validate_result", stage=stage, result=result)
+    return result
 
 
 def _decide_route(
@@ -536,6 +551,9 @@ def _decide_route(
             _ROUTING_FUNCTION,
             prompt,
             max_output_tokens=256,
+            trace_stage=stage,
+            trace_query=str(validation),
+            trace_step="decide_routing",
         )
         route = str(args.get("route", "")).strip().lower()
     except ServiceError as exc:
@@ -543,6 +561,10 @@ def _decide_route(
             raise
         route = ""
         _trace("route_model_fallback_triggered", stage=stage, error=str(exc))
+
+    if not bool(validation.get("is_sufficient")) and route == "proceed":
+        _trace("route_override_due_insufficient_validation", stage=stage, previous_route=route)
+        route = ""
 
     if route in allowed_routes:
         _trace("route_selected", stage=stage, route=route)
@@ -595,16 +617,41 @@ def _rewrite_query(
             _REWRITE_QUERY_FUNCTION,
             prompt,
             max_output_tokens=384,
+            trace_stage=stage,
+            trace_query=original_query,
+            trace_step="rewrite_query",
         )
         rewritten = str(args.get("rewritten_query", "")).strip()
         final_query = rewritten or original_query
     except ServiceError as exc:
         if exc.code != "model_failed":
             raise
-        final_query = original_query
+        final_query = _fallback_query_for_stage(
+            original_query=original_query,
+            stage=stage,
+            core_decision=core_decision,
+            content=content,
+        )
         _trace("rewrite_fallback", stage=stage, query=final_query)
     _trace("rewrite_done", stage=stage, rewritten_query=final_query)
     return final_query
+
+
+def _fallback_query_for_stage(
+    *,
+    original_query: str,
+    stage: str,
+    core_decision: dict[str, Any],
+    content: str,
+) -> str:
+    if stage != _STAGE_SEARCH:
+        return original_query
+    core = str(core_decision.get("core_cybercrime", "")).strip()
+    desc = str(core_decision.get("description", "")).strip()
+    base = core or desc or content[:200]
+    compact = re.sub(r"\s+", " ", base).strip()
+    compact = compact[:220]
+    return f"cyber harassment defamation applicable laws legal sections {compact}".strip()
 
 
 def _search_laws_with_google(client, types_mod, query: str, jurisdiction: str) -> list[LawCandidate]:
@@ -639,18 +686,35 @@ def _search_laws_with_google(client, types_mod, query: str, jurisdiction: str) -
         raise ServiceError("Failed to search cyber laws", code="model_failed", status_code=502) from exc
 
     text_output = _extract_text_from_response(response)
+    _trace("search_text_output", stage=_STAGE_SEARCH, text_preview=_preview_text(text_output, max_len=700))
     try:
         candidate = response.candidates[0]
     except Exception:
+        _trace("search_response_missing_candidates", stage=_STAGE_SEARCH)
         return []
 
     grounding = getattr(candidate, "grounding_metadata", None)
+    search_queries = list(getattr(grounding, "web_search_queries", []) or []) if grounding else []
+    grounding_chunks = list(getattr(grounding, "grounding_chunks", []) or []) if grounding else []
+    _trace(
+        "search_response_metadata",
+        stage=_STAGE_SEARCH,
+        has_grounding=bool(grounding),
+        web_search_queries_count=len(search_queries),
+        grounding_chunks_count=len(grounding_chunks),
+    )
     if not grounding:
-        _trace("search_no_grounding", stage=_STAGE_SEARCH)
-        return []
+        fallback_candidates = _extract_law_candidates_from_search_text(text_output)
+        _trace("search_no_grounding", stage=_STAGE_SEARCH, fallback_candidates=len(fallback_candidates))
+        _trace(
+            "search_candidates_output",
+            stage=_STAGE_SEARCH,
+            candidates_preview=_preview_text([item.__dict__ for item in fallback_candidates], max_len=700),
+        )
+        return fallback_candidates
 
     candidates: list[LawCandidate] = []
-    for idx, chunk in enumerate(getattr(grounding, "grounding_chunks", []) or []):
+    for idx, chunk in enumerate(grounding_chunks):
         web = getattr(chunk, "web", None)
         if not web:
             continue
@@ -674,8 +738,69 @@ def _search_laws_with_google(client, types_mod, query: str, jurisdiction: str) -
     for candidate_item in candidates:
         if not _candidate_exists(unique_candidates, candidate_item):
             unique_candidates.append(candidate_item)
+    if not unique_candidates:
+        fallback_candidates = _extract_law_candidates_from_search_text(text_output)
+        _trace("search_empty_grounding_candidates_fallback", stage=_STAGE_SEARCH, fallback_candidates=len(fallback_candidates))
+        _trace(
+            "search_candidates_output",
+            stage=_STAGE_SEARCH,
+            candidates_preview=_preview_text([item.__dict__ for item in fallback_candidates], max_len=700),
+        )
+        return fallback_candidates
     _trace("search_done", stage=_STAGE_SEARCH, found=len(unique_candidates))
+    _trace(
+        "search_candidates_output",
+        stage=_STAGE_SEARCH,
+        candidates_preview=_preview_text([item.__dict__ for item in unique_candidates], max_len=700),
+    )
     return unique_candidates
+
+
+def _extract_law_candidates_from_search_text(text_output: str) -> list[LawCandidate]:
+    if not text_output.strip():
+        return []
+
+    candidates: list[LawCandidate] = []
+
+    markdown_links = re.findall(r"\[([^\]]+)\]\((https?://[^)]+)\)", text_output)
+    for idx, (title, url) in enumerate(markdown_links):
+        clean_title = title.strip()
+        clean_url = url.strip().rstrip(").,")
+        if not clean_url:
+            continue
+        candidates.append(
+            LawCandidate(
+                law=clean_title or "Cyber law reference",
+                description="Extracted from Gemini search response text.",
+                source=clean_url,
+                stage=_STAGE_SEARCH,
+                score=float(idx),
+            )
+        )
+
+    raw_urls = re.findall(r"https?://[^\s)\],]+", text_output)
+    existing_urls = {item.source for item in candidates}
+    for raw in raw_urls:
+        clean_url = raw.strip().rstrip(").,")
+        if not clean_url or clean_url in existing_urls:
+            continue
+        label = clean_url.split("/")[-1].replace("-", " ").replace("_", " ").strip() or "Cyber law reference"
+        candidates.append(
+            LawCandidate(
+                law=label[:120],
+                description="Extracted from Gemini search response text.",
+                source=clean_url,
+                stage=_STAGE_SEARCH,
+                score=float(len(candidates)),
+            )
+        )
+        existing_urls.add(clean_url)
+
+    unique_candidates: list[LawCandidate] = []
+    for item in candidates:
+        if not _candidate_exists(unique_candidates, item):
+            unique_candidates.append(item)
+    return unique_candidates[: settings.cyberlaw_top_k]
 
 
 def _generate_final_response(
@@ -718,6 +843,9 @@ def _generate_final_response(
             _COMPLAINT_FUNCTION,
             prompt,
             max_output_tokens=2048,
+            trace_stage="final_synthesis",
+            trace_query=str(core_decision.get("core_cybercrime", "")),
+            trace_step="generate_cyber_law_complaint",
         )
         return _parse_output(args)
     except ServiceError as exc:
@@ -781,6 +909,22 @@ def _enforce_membership_and_sources(result: ComplaintOutput, candidates: list[La
                     source=candidate.source,
                 )
             )
+    elif len(ensured_laws) < _MIN_REQUIRED_LAWS:
+        existing_keys = {_candidate_key(item.law, item.source) for item in ensured_laws}
+        for candidate in candidates:
+            key = _candidate_key(candidate.law, candidate.source)
+            if key in existing_keys:
+                continue
+            ensured_laws.append(
+                ComplaintLaw(
+                    law=candidate.law,
+                    description=candidate.description,
+                    source=candidate.source,
+                )
+            )
+            existing_keys.add(key)
+            if len(ensured_laws) >= _MIN_REQUIRED_LAWS:
+                break
 
     return ComplaintOutput(
         summary=result.summary,
@@ -909,6 +1053,9 @@ def _call_function_tool(
     prompt: str,
     *,
     max_output_tokens: int,
+    trace_stage: str = "function_tool",
+    trace_query: str = "",
+    trace_step: str = "",
 ) -> dict[str, Any]:
     tools = types_mod.Tool(function_declarations=[function_declaration])
     config = types_mod.GenerateContentConfig(
@@ -935,6 +1082,10 @@ def _call_function_tool(
             "function_call_generation_start",
             function_name=function_declaration.get("name"),
             structure_attempt=structure_attempt,
+            stage=trace_stage,
+            step=trace_step or function_declaration.get("name"),
+            query_preview=_preview_text(trace_query),
+            prompt_preview=_preview_text(effective_prompt, max_len=500),
         )
 
         try:
@@ -961,6 +1112,7 @@ def _call_function_tool(
                     function_name=function_declaration.get("name"),
                     structure_attempt=structure_attempt,
                     response_mode="function_call",
+                    output_preview=_preview_text(args, max_len=700),
                 )
                 return args
             try:
@@ -970,6 +1122,7 @@ def _call_function_tool(
                     function_name=function_declaration.get("name"),
                     structure_attempt=structure_attempt,
                     response_mode="function_call_dict_cast",
+                    output_preview=_preview_text(parsed, max_len=700),
                 )
                 return parsed
             except Exception as exc:  # noqa: BLE001
@@ -983,13 +1136,16 @@ def _call_function_tool(
                 "function_call_text_json_fallback",
                 function_name=function_declaration.get("name"),
                 structure_attempt=structure_attempt,
+                output_preview=_preview_text(text_fallback, max_len=700),
             )
             return text_fallback
 
+        raw_text = _extract_text_from_response(response)
         _trace(
             "function_call_missing_structured_output",
             function_name=function_declaration.get("name"),
             structure_attempt=structure_attempt,
+            response_text_preview=_preview_text(raw_text, max_len=700),
         )
         model_failed_error = ServiceError(
             "Model did not return structured output",
