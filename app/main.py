@@ -21,6 +21,7 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://localhost:8002",
         "http://127.0.0.1:8002",
+        "https://cyberguard-frontend-w0ac.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
