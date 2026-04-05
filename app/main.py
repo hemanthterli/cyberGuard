@@ -1,3 +1,4 @@
+import os
 import time
 from uuid import uuid4
 
@@ -13,13 +14,19 @@ from app.schemas.responses import ErrorInfo, ResponseMeta, StandardResponse
 
 configure_logging()
 
+ALLOWED_ORIGINS: list[str] = [
+    origin.strip()
+    for origin in os.getenv(
+        "ALLOWED_ORIGINS",
+        "https://cyberguard-frontend-huwj.onrender.com,http://localhost:5173",
+    ).split(",")
+    if origin.strip()
+]
+
 app = FastAPI(title=settings.app_name)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://cyberguard-frontend-huwj.onrender.com",
-        "http://localhost:5173",
-    ],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -60,7 +67,17 @@ def _error_response(request: Request, status_code: int, code: str, detail: str) 
         error=ErrorInfo(code=code, detail=detail),
     )
 
-    return JSONResponse(status_code=status_code, content=response.model_dump())
+    json_response = JSONResponse(status_code=status_code, content=response.model_dump())
+
+    # Defensive: FastAPI exception handlers can bypass CORSMiddleware in some
+    # Starlette versions, so explicitly attach CORS headers to every error response.
+    origin = request.headers.get("origin")
+    if origin in ALLOWED_ORIGINS:
+        json_response.headers["Access-Control-Allow-Origin"] = origin
+        json_response.headers["Access-Control-Allow-Credentials"] = "true"
+        json_response.headers["Vary"] = "Origin"
+
+    return json_response
 
 
 @app.exception_handler(HTTPException)
