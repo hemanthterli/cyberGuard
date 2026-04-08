@@ -1,0 +1,73 @@
+{
+  "session_id": "637ae802-a88b-4ef7-9a7a-46c590f4f2d7",
+  "timestamp_ist": "2026-04-08T18:58:39.268373+05:30",
+  "user_query": "This instance falls under cyber hate speech, involving the dissemination of inflammatory content targeting specific religious and national groups to incite communal tension.",
+  "country": "India",
+  "generated_search_query": "cyber law This instance falls under cyber hate speech, involving the dissemination of inflammatory content targeting specific religious and national groups to incite communal tension. India",
+  "rag_results_count": 4,
+  "google_results_count": 1,
+  "final_laws_count": 3,
+  "rag_results": [
+    {
+      "title": "IT Act Section 66F – Cyber terrorism",
+      "description": "Title: IT Act Section 66F – Cyber terrorism\n\nCategory: cyber_law\n\nTags: section66F, cyber_terrorism, security, nation, cybercrime, india\n\nDate: 2020-01-01\n\nContent:\nSection 66F – Acts of cyber terrorism. A person may face life imprisonment if he or she denies authorized access to a computer resource or attempts unauthorized access with intent to threaten the unity, integrity, security or sovereignty of India. This is a non-bailable offence.",
+      "source": "rag",
+      "url": "https://infosecawareness.in/cyber-laws-of-india",
+      "country": "India"
+    },
+    {
+      "title": "IT Act Section 67 – Publishing child pornography or predating children online",
+      "description": "Title: IT Act Section 67 – Publishing child pornography or predating children online\n\nCategory: cyber_law\n\nTags: section67, child_protection, pornography, cybercrime, india\n\nDate: 2020-01-01\n\nContent:\nSection 67 – Publishing child pornography or predating children online. If a person captures, publishes or transmits images of a child in a sexually explicit act or induces a person under 18 into a sexual act, punishment may be imprisonment up to 7 years or fine up to 10 lakhs INR or both.",
+      "source": "rag",
+      "url": "https://infosecawareness.in/cyber-laws-of-india",
+      "country": "India"
+    },
+    {
+      "title": "Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Amendment Rules 2026",
+      "description": "Title: Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Amendment Rules 2026\n\nCategory: cyber_law\n\nTags: intermediary, rules, digital_media, it_rules, 2026\n\nDate: 2026-02-10\n\nContent:\nInformation Technology (Intermediary Guidelines and Digital Media Ethics Code) Amendment Rules, 2026. An Act to consolidate and amend the provisions relating to offences and for matters connected therewith or incidental thereto. Ministry: Ministry of Electronics and Information Technology.",
+      "source": "rag",
+      "url": "https://i4c.mha.gov.in/acts-and-rules.aspx",
+      "country": "India"
+    },
+    {
+      "title": "IT Act Section 66E – Publishing private images of others",
+      "description": "Title: IT Act Section 66E – Publishing private images of others\n\nCategory: cyber_law\n\nTags: section66E, privacy, images, cybercrime, india\n\nDate: 2020-01-01\n\nContent:\nSection 66E – Publishing private images of others. If a person captures, transmits or publishes images of a person’s private parts without consent or knowledge, the person may face imprisonment up to 3 years or fine up to 2 lakhs INR or both.",
+      "source": "rag",
+      "url": "https://infosecawareness.in/cyber-laws-of-india",
+      "country": "India"
+    }
+  ],
+  "google_results": [
+    {
+      "title": "Google Search: cyber law This instance falls under cyber hate speech, involving the dissemination of inflammatory content targeting specific religious and national groups to incite communal tension. India",
+      "description": "In India, cyber hate speech—specifically content that targets religious or national groups to incite communal tension—is governed by a combination of the newly enacted criminal code, cyber-specific legislation, and intermediary regulations.\n\nAs of **July 1, 2024**, the **Bharatiya Nyaya Sanhita (BNS)** has replaced the Indian Penal Code (IPC), and it contains the primary substantive provisions for prosecuting hate speech.\n\n### 1. Substantive Criminal Law: Bharatiya Nyaya Sanhita (BNS), 2023\nThe BNS contains specific sections to deal with inflammatory content and communal disharmony:\n\n*   **Section 196 (formerly Section 153A IPC):** This is the primary provision for hate speech. It penalizes promoting enmity between different groups on grounds of religion, race, place of birth, residence, language, etc., and doing acts prejudicial to the maintenance of harmony. If the offense is committed in a place of worship or through a public medium (like the internet), the punishment is enhanced.\n*   **Section 197 (formerly Section 153B IPC):** This section deals with imputations and assertions prejudicial to national integration. It targets content that claims members of a particular religious or national group cannot bear true allegiance to the Constitution or should be deprived of their rights as citizens.\n*   **Section 299 (formerly Section 295A IPC):** This penalizes deliberate and malicious acts intended to outrage the religious feelings of any class by insulting its religion or religious beliefs. This is frequently applied to online content deemed blasphemous or inflammatory.\n*   **Section 353 (formerly Section 505 IPC):** This addresses \"Statements conducing to public mischief.\" Specifically, Section 353(2) penalizes the dissemination of reports or rumors online that create or promote feelings of enmity, hatred, or ill-will between different religious, racial, or linguistic groups.\n\n### 2. Cyber-Specific Legislation: Information Technology (IT) Act, 2000\nWhile the IT Act",
+      "source": "google_search",
+      "url": "",
+      "country": "India",
+      "search_query_used": "cyber law This instance falls under cyber hate speech, involving the dissemination of inflammatory content targeting specific religious and national groups to incite communal tension. India"
+    }
+  ],
+  "final_selected_laws": [
+    {
+      "title": "Bharatiya Nyaya Sanhita (BNS), 2023 (Sections 196, 197, 299, 353)",
+      "description": "The primary legal framework for prosecuting hate speech in India as of July 1, 2024. Key sections include: Section 196 (promoting enmity between groups on grounds of religion, race, etc.), Section 197 (imputations prejudicial to national integration), Section 299 (deliberate acts to outrage religious feelings), and Section 353 (dissemination of rumors or reports to promote enmity or hatred between groups). These provisions specifically target the dissemination of inflammatory content through public mediums like the internet.",
+      "source": "google_search",
+      "url": "",
+      "country": "India"
+    },
+    {
+      "title": "IT Act Section 66F – Cyber terrorism",
+      "description": "This section deals with acts of cyber terrorism. It applies if a person, with intent to threaten the unity, integrity, security, or sovereignty of India, uses computer resources to cause or likely cause injury to people or damage to property. Disseminating content that incites communal tension to the point of threatening national security can be prosecuted under this non-bailable offense, carrying a penalty of life imprisonment.",
+      "source": "rag",
+      "url": "https://infosecawareness.in/cyber-laws-of-india",
+      "country": "India"
+    },
+    {
+      "title": "Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Amendment Rules 2026",
+      "description": "These rules provide the regulatory framework for digital media and social media intermediaries. They mandate how platforms must handle and remove content that is unlawful, including hate speech and content that threatens public order or communal harmony. The 2026 amendment continues the consolidation of provisions relating to digital offenses and intermediary accountability.",
+      "source": "rag",
+      "url": "https://i4c.mha.gov.in/acts-and-rules.aspx",
+      "country": "India"
+    }
+  ]
+}
