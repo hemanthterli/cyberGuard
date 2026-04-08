@@ -57,14 +57,18 @@ def generate_complaint(payload: ComplaintGenerationInput) -> ComplaintOutput:
     )
 
     try:
-        response = client.models.generate_content(
+        response = gemini_error_handler.call_with_retry(
+            client.models.generate_content,
             model=settings.gemini_complaint_model,
             contents=prompt,
             config=config,
+            validate=gemini_error_handler.validate_has_text,
         )
+    except ServiceError:
+        raise
     except Exception as exc:  # noqa: BLE001
         gemini_error_handler.raise_if_model_busy(exc)
-        logger.error("Gemini complaint generation failed", exc_info=True)
+        logger.error("Gemini complaint generation failed after retries", exc_info=True)
         raise ServiceError("Failed to generate complaint", code="model_failed", status_code=502) from exc
 
     raw_text = _extract_text(response)

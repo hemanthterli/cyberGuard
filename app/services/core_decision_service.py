@@ -93,14 +93,18 @@ def analyze_bullying(data: CoreDecisionInput) -> CoreDecisionData:
     prompt = _build_prompt(input_payload)
 
     try:
-        response = client.models.generate_content(
+        response = gemini_error_handler.call_with_retry(
+            client.models.generate_content,
             model=settings.gemini_model,
             contents=prompt,
             config=config,
+            validate=gemini_error_handler.validate_has_function_call,
         )
+    except ServiceError:
+        raise
     except Exception as exc:  # noqa: BLE001
         gemini_error_handler.raise_if_model_busy(exc)
-        logger.error("Gemini request failed", exc_info=True)
+        logger.error("Gemini request failed after retries", exc_info=True)
         raise ServiceError("Failed to run decision model", code="model_failed", status_code=502) from exc
 
     try:

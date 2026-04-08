@@ -46,14 +46,18 @@ def enhance_content(payload: ContentEnhancementInput) -> ProcessedResult:
     )
 
     try:
-        response = client.models.generate_content(
+        response = gemini_error_handler.call_with_retry(
+            client.models.generate_content,
             model=settings.gemini_enhance_model,
             contents=prompt,
             config=config,
+            validate=gemini_error_handler.validate_has_text,
         )
+    except ServiceError:
+        raise
     except Exception as exc:  # noqa: BLE001
         gemini_error_handler.raise_if_model_busy(exc)
-        logger.error("Gemini enhancement failed", exc_info=True)
+        logger.error("Gemini enhancement failed after retries", exc_info=True)
         raise ServiceError("Failed to enhance content", code="model_failed", status_code=502) from exc
 
     text = _extract_text(response)
