@@ -1,0 +1,72 @@
+{
+  "session_id": "44c0fb5d-c644-4a1a-967c-2721accf3dbe",
+  "timestamp_ist": "2026-04-08T17:30:01.929123+05:30",
+  "user_query": "This content falls under the domain of online harassment or defamation, targeting an individual's reputation through dismissive and critical public statements online.",
+  "country": "United Kingdom",
+  "generated_search_query": "; ; ",
+  "rag_results_count": 4,
+  "google_results_count": 1,
+  "final_laws_count": 3,
+  "rag_results": [
+    {
+      "title": "IT Act Section 66E – Publishing private images of others",
+      "description": "Title: IT Act Section 66E – Publishing private images of others\n\nCategory: cyber_law\n\nTags: section66E, privacy, images, cybercrime, india\n\nDate: 2020-01-01\n\nContent:\nSection 66E – Publishing private images of others. If a person captures, transmits or publishes images of a person’s private parts without consent or knowledge, the person may face imprisonment up to 3 years or fine up to 2 lakhs INR or both.",
+      "source": "rag",
+      "url": "https://infosecawareness.in/cyber-laws-of-india",
+      "country": "United Kingdom"
+    },
+    {
+      "title": "IT Act Section 67 – Publishing child pornography or predating children online",
+      "description": "Title: IT Act Section 67 – Publishing child pornography or predating children online\n\nCategory: cyber_law\n\nTags: section67, child_protection, pornography, cybercrime, india\n\nDate: 2020-01-01\n\nContent:\nSection 67 – Publishing child pornography or predating children online. If a person captures, publishes or transmits images of a child in a sexually explicit act or induces a person under 18 into a sexual act, punishment may be imprisonment up to 7 years or fine up to 10 lakhs INR or both.",
+      "source": "rag",
+      "url": "https://infosecawareness.in/cyber-laws-of-india",
+      "country": "United Kingdom"
+    },
+    {
+      "title": "IT Act Section 66F – Cyber terrorism",
+      "description": "Title: IT Act Section 66F – Cyber terrorism\n\nCategory: cyber_law\n\nTags: section66F, cyber_terrorism, security, nation, cybercrime, india\n\nDate: 2020-01-01\n\nContent:\nSection 66F – Acts of cyber terrorism. A person may face life imprisonment if he or she denies authorized access to a computer resource or attempts unauthorized access with intent to threaten the unity, integrity, security or sovereignty of India. This is a non-bailable offence.",
+      "source": "rag",
+      "url": "https://infosecawareness.in/cyber-laws-of-india",
+      "country": "United Kingdom"
+    },
+    {
+      "title": "Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Amendment Rules 2026",
+      "description": "Title: Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Amendment Rules 2026\n\nCategory: cyber_law\n\nTags: intermediary, rules, digital_media, it_rules, 2026\n\nDate: 2026-02-10\n\nContent:\nInformation Technology (Intermediary Guidelines and Digital Media Ethics Code) Amendment Rules, 2026. An Act to consolidate and amend the provisions relating to offences and for matters connected therewith or incidental thereto. Ministry: Ministry of Electronics and Information Technology.",
+      "source": "rag",
+      "url": "https://i4c.mha.gov.in/acts-and-rules.aspx",
+      "country": "United Kingdom"
+    }
+  ],
+  "google_results": [
+    {
+      "title": "Google Search: This content falls under the domain of online harassment or defamation, targeting an individual's reputation through dismissive and critical public statements online. in United Kingdom",
+      "description": "In the United Kingdom, online harassment and defamation are governed by a combination of criminal and civil laws. When dismissive and critical public statements target an individual’s reputation or well-being, the following legal provisions are the most relevant:\n\n### 1. Civil Law: Defamation\nDefamation is the primary legal route for addressing statements that damage a person's reputation. It is divided into **libel** (written/permanent form, including social media) and **slander** (spoken/transient).\n\n*   **Defamation Act 2013:**\n    *   **Serious Harm Threshold (Section 1):** A statement is not defamatory unless its publication has caused, or is likely to cause, \"serious harm\" to the reputation of the claimant. For businesses, this must include serious financial loss.\n    *   **Defences:** The law protects free speech through several defences:\n        *   **Truth:** If the statement is substantially true.\n        *   **Honest Opinion:** If the statement was an opinion that an honest person could have held based on existing facts. This is highly relevant to \"dismissive and critical\" statements.\n        *   **Public Interest:** If the statement was on a matter of public interest and the author reasonably believed publishing it was in the public interest.\n\n### 2. Criminal Law: Harassment and Malicious Communications\nIf the online behavior goes beyond criticism and becomes a targeted campaign of abuse, it may fall under criminal law.\n\n*   **Protection from Harassment Act 1997:**\n    *   This Act prohibits a \"course of conduct\" (at least two incidents) that amounts to harassment.\n    *   The conduct must be such that a reasonable person would think it amounts to harassment and causes the victim alarm or distress.\n*   **Malicious Communications Act 1988:**\n    *   It is an offence to send an electronic communication that is \"indecent or grossly offensive,\" \"conveys a threat,\" or \"conveys information which is false and known or believed to be false by the sender,\" with t",
+      "source": "google_search",
+      "url": "",
+      "country": "United Kingdom"
+    }
+  ],
+  "final_selected_laws": [
+    {
+      "title": "Defamation Act 2013",
+      "description": "The primary legislation for addressing statements that damage a person's reputation. It requires that a statement cause 'serious harm' to the reputation of the claimant. It provides key defenses such as 'Truth' and 'Honest Opinion,' which are particularly relevant to dismissive or critical public statements.",
+      "source": "google_search",
+      "url": "",
+      "country": "United Kingdom"
+    },
+    {
+      "title": "Protection from Harassment Act 1997",
+      "description": "Prohibits a 'course of conduct' (at least two incidents) that amounts to harassment. This is applicable if online behavior goes beyond criticism and becomes a targeted campaign of abuse that causes a person alarm or distress.",
+      "source": "google_search",
+      "url": "",
+      "country": "United Kingdom"
+    },
+    {
+      "title": "Malicious Communications Act 1988",
+      "description": "Makes it a criminal offence to send electronic communications that are 'grossly offensive,' 'indecent,' or 'false and known to be false,' with the intent to cause distress or anxiety to the recipient.",
+      "source": "google_search",
+      "url": "",
+      "country": "United Kingdom"
+    }
+  ]
+}

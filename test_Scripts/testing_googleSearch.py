@@ -20,7 +20,7 @@ print("\n🚀 Sending request...\n")
 
 response = client.models.generate_content(
     model="gemini-3-flash-preview",
-    contents="Latest news about Cyber laws in 2026",
+    contents="Latest news about Cyber laws in 2026 in america",
     config=types.GenerateContentConfig(
         tools=[{"google_search": {}}]
     ),
